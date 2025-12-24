@@ -6,7 +6,7 @@ import { getAllStyleAgents } from '@/services/stylesService';
 import { useApiKey } from '@/contexts/ApiKeyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLanguageInstruction, getLanguageLabel } from '@/types/language';
-import { generateWithRetry } from '@/lib/gemini';
+import { generateWithModelFallback } from '@/lib/gemini';
 
 export type StoryStep = 1 | 2 | 3 | 4 | 5;
 
@@ -148,12 +148,12 @@ Return a JSON array with format:
 IMPORTANT: All text content MUST be in ${langLabel}.
 Return ONLY the JSON array, no other text.`;
 
-            const result = await generateWithRetry(
+            const result = await generateWithModelFallback(
                 getNextKey,
                 markKeyInvalid,
                 prompt,
                 undefined,
-                { maxRetries: 3, delayMs: 1500 }
+                { maxRetries: 2, delayMs: 1500 }
             );
 
             if (!result) {
@@ -229,12 +229,12 @@ OUTPUT FORMAT:
 
 [Story content...]`;
 
-            const result = await generateWithRetry(
+            const result = await generateWithModelFallback(
                 getNextKey,
                 markKeyInvalid,
                 prompt,
                 undefined,
-                { maxRetries: 3, delayMs: 2000 }
+                { maxRetries: 2, delayMs: 2000 }
             );
 
             if (!result) {

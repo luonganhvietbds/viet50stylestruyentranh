@@ -6,7 +6,7 @@ import { getAllStyleConfigs } from '@/services/stylesService';
 import { useApiKey } from '@/contexts/ApiKeyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLanguageLabel } from '@/types/language';
-import { generateWithRetry } from '@/lib/gemini';
+import { generateWithModelFallback } from '@/lib/gemini';
 
 interface UseScenePipelineReturn {
     // State
@@ -229,12 +229,12 @@ ${segments.map((seg, i) => `[VS_${String(i + 1).padStart(3, '0')}] ${seg}`).join
 
 Generate the Character Bible JSON.`;
 
-            const characterResult = await generateWithRetry(
+            const characterResult = await generateWithModelFallback(
                 getNextKey,
                 markKeyInvalid,
                 characterPrompt,
                 undefined,
-                { maxRetries: 3, delayMs: 1500 }
+                { maxRetries: 2, delayMs: 1500 }
             );
 
             if (!characterResult) {
@@ -268,12 +268,12 @@ ${JSON.stringify(characterBible || { characters: [] }, null, 2)}
 
 Generate the promptSnippet array for all characters.`;
 
-            const snippetResult = await generateWithRetry(
+            const snippetResult = await generateWithModelFallback(
                 getNextKey,
                 markKeyInvalid,
                 snippetPrompt,
                 undefined,
-                { maxRetries: 3, delayMs: 1500 }
+                { maxRetries: 2, delayMs: 1500 }
             );
 
             if (!snippetResult) {
@@ -327,12 +327,12 @@ ${batch.map((seg, idx) => `[VS_${String(i + idx + 1).padStart(3, '0')}] ${seg}`)
 
 Generate scene objects for each segment.`;
 
-                const sceneResult = await generateWithRetry(
+                const sceneResult = await generateWithModelFallback(
                     getNextKey,
                     markKeyInvalid,
                     scenePrompt,
                     undefined,
-                    { maxRetries: 3, delayMs: 2000 }
+                    { maxRetries: 2, delayMs: 2000 }
                 );
 
                 if (sceneResult) {
