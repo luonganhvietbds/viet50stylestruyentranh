@@ -20,26 +20,12 @@ import {
     DollarSign,
     UserPlus,
     Activity,
-    Palette
+    Palette,
+    RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { StylesPanel } from '@/components/admin/StylesPanel';
-
-// Mock data for demo
-const MOCK_USERS = [
-    { id: '1', email: 'user1@example.com', displayName: 'Nguyen Van A', role: 'gold', createdAt: '2024-12-01' },
-    { id: '2', email: 'user2@example.com', displayName: 'Tran Thi B', role: 'silver', createdAt: '2024-12-10' },
-    { id: '3', email: 'user3@example.com', displayName: 'Le Van C', role: 'free', createdAt: '2024-12-15' },
-    { id: '4', email: 'user4@example.com', displayName: 'Pham Thi D', role: 'free', createdAt: '2024-12-20' },
-    { id: '5', email: 'admin@example.com', displayName: 'Admin User', role: 'admin', createdAt: '2024-11-01' },
-];
-
-const STATS = [
-    { label: 'Tổng Users', value: '1,234', change: '+12%', icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'Gold Members', value: '89', change: '+5%', icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-    { label: 'Doanh Thu Tháng', value: '45.2M', change: '+18%', icon: DollarSign, color: 'text-green-400', bg: 'bg-green-500/10' },
-    { label: 'Active Today', value: '342', change: '+8%', icon: Activity, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-];
+import { useAdminData } from '@/hooks/useAdminData';
 
 const TABS = [
     { id: 'overview', label: 'Tổng Quan', icon: BarChart3 },
@@ -53,7 +39,20 @@ export default function AdminPage() {
     const { user, loading, isAdmin } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState('overview');
-    const [searchQuery, setSearchQuery] = useState('');
+
+    // Use real data from Firebase
+    const {
+        users,
+        loadingUsers,
+        searchQuery,
+        setSearchQuery,
+        filteredUsers,
+        stats,
+        loadingStats,
+        recentActivity,
+        refreshData,
+        changeUserRole,
+    } = useAdminData();
 
     // Redirect if not admin
     useEffect(() => {
@@ -75,11 +74,6 @@ export default function AdminPage() {
         return null;
     }
 
-    const filteredUsers = MOCK_USERS.filter(u =>
-        u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.displayName.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     const getRoleBadge = (role: string) => {
         switch (role) {
             case 'admin':
@@ -92,6 +86,14 @@ export default function AdminPage() {
                 return <span className="px-2 py-0.5 text-xs font-bold bg-gray-500/20 text-gray-400 rounded border border-gray-500/30">FREE</span>;
         }
     };
+
+    // Stats cards configuration
+    const statsCards = [
+        { label: 'Tổng Users', value: stats.totalUsers.toLocaleString(), icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+        { label: 'Gold Members', value: stats.goldMembers.toLocaleString(), icon: Crown, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+        { label: 'Silver Members', value: stats.silverMembers.toLocaleString(), icon: Star, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+        { label: 'Active Today', value: stats.activeToday.toLocaleString(), icon: Activity, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    ];
 
     return (
         <div className="min-h-[calc(100vh-4rem)]">
@@ -144,54 +146,72 @@ export default function AdminPage() {
                 {/* Overview Tab */}
                 {activeTab === 'overview' && (
                     <div className="space-y-8">
+                        {/* Refresh Button */}
+                        <div className="flex justify-end">
+                            <button
+                                onClick={refreshData}
+                                className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                Làm mới
+                            </button>
+                        </div>
+
                         {/* Stats Grid */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {STATS.map((stat, idx) => {
-                                const Icon = stat.icon;
-                                return (
-                                    <div key={idx} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                            {loadingStats ? (
+                                Array(4).fill(0).map((_, idx) => (
+                                    <div key={idx} className="bg-gray-900 border border-gray-800 rounded-xl p-5 animate-pulse">
                                         <div className="flex items-center justify-between mb-3">
-                                            <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}>
-                                                <Icon className={`w-5 h-5 ${stat.color}`} />
-                                            </div>
-                                            <span className="text-xs font-medium text-green-400 flex items-center gap-1">
-                                                <TrendingUp className="w-3 h-3" />
-                                                {stat.change}
-                                            </span>
+                                            <div className="w-10 h-10 rounded-lg bg-gray-800" />
                                         </div>
-                                        <p className="text-2xl font-bold text-white">{stat.value}</p>
-                                        <p className="text-sm text-gray-500">{stat.label}</p>
+                                        <div className="h-8 bg-gray-800 rounded w-20 mb-2" />
+                                        <div className="h-4 bg-gray-800 rounded w-24" />
                                     </div>
-                                );
-                            })}
+                                ))
+                            ) : (
+                                statsCards.map((stat, idx) => {
+                                    const Icon = stat.icon;
+                                    return (
+                                        <div key={idx} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center`}>
+                                                    <Icon className={`w-5 h-5 ${stat.color}`} />
+                                                </div>
+                                            </div>
+                                            <p className="text-2xl font-bold text-white">{stat.value}</p>
+                                            <p className="text-sm text-gray-500">{stat.label}</p>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
 
                         {/* Recent Activity */}
                         <div className="bg-gray-900 border border-gray-800 rounded-xl p-6">
                             <h3 className="text-lg font-bold text-white mb-4">Hoạt Động Gần Đây</h3>
                             <div className="space-y-4">
-                                {[
-                                    { action: 'User mới đăng ký', user: 'nguyen@email.com', time: '5 phút trước', type: 'signup' },
-                                    { action: 'Upgrade lên Gold', user: 'tran@email.com', time: '1 giờ trước', type: 'upgrade' },
-                                    { action: 'Thanh toán thành công', user: 'le@email.com', time: '2 giờ trước', type: 'payment' },
-                                    { action: 'User mới đăng ký', user: 'pham@email.com', time: '3 giờ trước', type: 'signup' },
-                                ].map((activity, idx) => (
-                                    <div key={idx} className="flex items-center gap-4 py-3 border-b border-gray-800 last:border-0">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.type === 'signup' ? 'bg-blue-500/20 text-blue-400' :
-                                            activity.type === 'upgrade' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                'bg-green-500/20 text-green-400'
-                                            }`}>
-                                            {activity.type === 'signup' ? <UserPlus className="w-4 h-4" /> :
-                                                activity.type === 'upgrade' ? <Crown className="w-4 h-4" /> :
-                                                    <CreditCard className="w-4 h-4" />}
+                                {recentActivity.length === 0 ? (
+                                    <p className="text-gray-500 text-center py-8">Chưa có hoạt động nào</p>
+                                ) : (
+                                    recentActivity.map((activity) => (
+                                        <div key={activity.id} className="flex items-center gap-4 py-3 border-b border-gray-800 last:border-0">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.type === 'signup' ? 'bg-blue-500/20 text-blue-400' :
+                                                    activity.type === 'upgrade' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                        'bg-green-500/20 text-green-400'
+                                                }`}>
+                                                {activity.type === 'signup' ? <UserPlus className="w-4 h-4" /> :
+                                                    activity.type === 'upgrade' ? <Crown className="w-4 h-4" /> :
+                                                        <CreditCard className="w-4 h-4" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm text-white">{activity.action}</p>
+                                                <p className="text-xs text-gray-500">{activity.user}</p>
+                                            </div>
+                                            <span className="text-xs text-gray-500">{activity.time}</span>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm text-white">{activity.action}</p>
-                                            <p className="text-xs text-gray-500">{activity.user}</p>
-                                        </div>
-                                        <span className="text-xs text-gray-500">{activity.time}</span>
-                                    </div>
-                                ))}
+                                    ))
+                                )}
                             </div>
                         </div>
                     </div>
@@ -217,48 +237,67 @@ export default function AdminPage() {
                                     className="w-full pl-10 pr-4 py-3 bg-gray-900 border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
                                 />
                             </div>
-                            <button className="px-4 py-3 bg-red-600 hover:bg-red-500 text-white rounded-lg font-medium flex items-center gap-2 transition-colors">
-                                <UserPlus className="w-4 h-4" />
-                                Thêm User
+                            <button
+                                onClick={refreshData}
+                                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                Làm mới
                             </button>
                         </div>
 
                         {/* Users Table */}
                         <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-gray-800/50">
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">User</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Role</th>
-                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Ngày Tạo</th>
-                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredUsers.map((u) => (
-                                        <tr key={u.id} className="border-t border-gray-800 hover:bg-gray-800/50">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
-                                                        <User className="w-5 h-5 text-gray-500" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-white">{u.displayName}</p>
-                                                        <p className="text-sm text-gray-500">{u.email}</p>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">{getRoleBadge(u.role)}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-400">{u.createdAt}</td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
-                                                    <MoreVertical className="w-4 h-4" />
-                                                </button>
-                                            </td>
+                            {loadingUsers ? (
+                                <div className="flex items-center justify-center py-12">
+                                    <Loader2 className="w-8 h-8 text-red-500 animate-spin" />
+                                </div>
+                            ) : filteredUsers.length === 0 ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    {searchQuery ? 'Không tìm thấy user phù hợp' : 'Chưa có user nào'}
+                                </div>
+                            ) : (
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="bg-gray-800/50">
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">User</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Role</th>
+                                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase">Ngày Tạo</th>
+                                            <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase">Actions</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                        {filteredUsers.map((u) => (
+                                            <tr key={u.id} className="border-t border-gray-800 hover:bg-gray-800/50">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
+                                                            {u.photoURL ? (
+                                                                <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
+                                                            ) : (
+                                                                <User className="w-5 h-5 text-gray-500" />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-white">{u.displayName}</p>
+                                                            <p className="text-sm text-gray-500">{u.email}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">{getRoleBadge(u.role)}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-400">
+                                                    {u.createdAt.toLocaleDateString('vi-VN')}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors">
+                                                        <MoreVertical className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
                         </div>
                     </div>
                 )}
