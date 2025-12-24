@@ -45,7 +45,7 @@ export const generateContent = async (
     options?: GenerateOptions
 ) => {
     const client = getGeminiClient(apiKey);
-    const model = options?.model || 'gemini-2.0-flash';
+    const model = options?.model || 'gemini-2.5-flash';
 
     const response = await client.models.generateContent({
         model,
@@ -162,7 +162,9 @@ export const createRetryableGenerate = (
 };
 
 export const GEMINI_MODELS = {
-    FLASH: 'gemini-2.0-flash',
-    PRO: 'gemini-1.5-pro',
+    FLASH_25: 'gemini-2.5-flash',       // Recommended - better quota
+    FLASH_20: 'gemini-2.0-flash',       // Legacy
+    FLASH_15: 'gemini-1.5-flash',       // Fallback option
+    PRO: 'gemini-1.5-pro',              // Higher quality
     FLASH_THINKING: 'gemini-2.0-flash-thinking-exp',
 } as const;
