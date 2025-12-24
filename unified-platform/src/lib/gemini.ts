@@ -2,10 +2,12 @@
 import { GoogleGenAI } from '@google/genai';
 
 let genAIInstance: GoogleGenAI | null = null;
+let currentApiKey: string | null = null;
 
 export const getGeminiClient = (apiKey: string): GoogleGenAI => {
-    if (!genAIInstance || genAIInstance !== apiKey) {
+    if (!genAIInstance || currentApiKey !== apiKey) {
         genAIInstance = new GoogleGenAI({ apiKey });
+        currentApiKey = apiKey;
     }
     return genAIInstance;
 };

@@ -146,7 +146,7 @@ export function Navbar() {
                         )}
 
                         {/* User Info */}
-                        {user && (
+                        {user ? (
                             <div className="hidden sm:flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5">
                                 <div className="text-right">
                                     <p className="text-xs font-medium text-white truncate max-w-[100px]">
@@ -168,6 +168,14 @@ export function Navbar() {
                                     <LogOut className="w-4 h-4" />
                                 </button>
                             </div>
+                        ) : (
+                            <Link
+                                href="/login"
+                                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-medium text-sm transition-all"
+                            >
+                                <User className="w-4 h-4" />
+                                Đăng nhập
+                            </Link>
                         )}
 
                         {/* Mobile Menu Button */}
@@ -208,7 +216,7 @@ export function Navbar() {
                         })}
 
                         {/* Mobile User Section */}
-                        {user && (
+                        {user ? (
                             <div className="pt-4 mt-4 border-t border-gray-800">
                                 <div className="flex items-center justify-between px-4">
                                     <div className="flex items-center gap-3">
@@ -233,6 +241,17 @@ export function Navbar() {
                                         <LogOut className="w-5 h-5" />
                                     </button>
                                 </div>
+                            </div>
+                        ) : (
+                            <div className="pt-4 mt-4 border-t border-gray-800 px-4">
+                                <Link
+                                    href="/login"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all"
+                                >
+                                    <User className="w-5 h-5" />
+                                    Đăng nhập / Đăng ký
+                                </Link>
                             </div>
                         )}
                     </div>
