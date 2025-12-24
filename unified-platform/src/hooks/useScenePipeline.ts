@@ -107,21 +107,86 @@ export function useScenePipeline(): UseScenePipelineReturn {
         } : null);
     }, []);
 
-    // Parse voice segments from input
-    const parseVoiceSegments = (input: string): string[] => {
+    // Clean JSON string by removing bad control characters
+    const cleanJsonString = (str: string): string => {
+        // Remove control characters except whitespace (tab, newline, carriage return)
+        return str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    };
+
+    // Safe JSON parse with cleanup
+    const safeJsonParse = (str: string): unknown | null => {
         try {
-            // Try to parse as JSON
-            const parsed = JSON.parse(input);
-            if (Array.isArray(parsed)) {
-                return parsed.map((item, idx) =>
-                    typeof item === 'string' ? item : (item.text || item.content || `Segment ${idx + 1}`)
-                );
-            }
+            const cleaned = cleanJsonString(str);
+            return JSON.parse(cleaned);
         } catch {
-            // Split by newlines if not JSON
-            return input.split('\n').filter(line => line.trim().length > 0);
+            return null;
         }
-        return [input];
+    };
+
+    // Parse voice segments from input (handles multiple formats)
+    const parseVoiceSegments = (input: string): string[] => {
+        const trimmedInput = input.trim();
+
+        // Check if input looks like JSON
+        const looksLikeJson = trimmedInput.startsWith('{') || trimmedInput.startsWith('[');
+
+        if (looksLikeJson) {
+            const parsed = safeJsonParse(trimmedInput);
+
+            if (parsed) {
+                // Handle { segments: [...] } or { data: [...] } structure
+                if (typeof parsed === 'object' && !Array.isArray(parsed)) {
+                    const obj = parsed as Record<string, unknown>;
+                    const segmentsArray = obj.segments || obj.data || obj.items || obj.voiceSegments;
+
+                    if (Array.isArray(segmentsArray)) {
+                        return segmentsArray
+                            .map((item: unknown) => {
+                                if (typeof item === 'string') return item;
+                                if (typeof item === 'object' && item !== null) {
+                                    const seg = item as Record<string, unknown>;
+                                    return String(seg.text || seg.content || seg.voice || '');
+                                }
+                                return '';
+                            })
+                            .filter(text => text.trim().length > 0);
+                    }
+                }
+
+                // Handle direct array: [{ text: "..." }, ...]
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map((item: unknown) => {
+                            if (typeof item === 'string') return item;
+                            if (typeof item === 'object' && item !== null) {
+                                const seg = item as Record<string, unknown>;
+                                return String(seg.text || seg.content || seg.voice || '');
+                            }
+                            return '';
+                        })
+                        .filter(text => text.trim().length > 0);
+                }
+            }
+
+            // JSON parsing failed - don't fallback to line split for JSON input
+            console.warn('Failed to parse JSON input, attempting text extraction...');
+            // Try to extract text from malformed JSON using regex
+            const textMatches = trimmedInput.match(/"text"\s*:\s*"([^"]+)"/g);
+            if (textMatches && textMatches.length > 0) {
+                return textMatches
+                    .map(match => {
+                        const valueMatch = match.match(/"text"\s*:\s*"([^"]+)"/);
+                        return valueMatch ? valueMatch[1] : '';
+                    })
+                    .filter(Boolean);
+            }
+        }
+
+        // Plain text input - split by newlines
+        return trimmedInput
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
     };
 
     // Start 3-step pipeline
@@ -181,7 +246,8 @@ Generate the Character Bible JSON.`;
             let characterBible: CharacterBible | undefined;
 
             if (charJsonMatch) {
-                characterBible = JSON.parse(charJsonMatch[0]) as CharacterBible;
+                const cleanedJson = cleanJsonString(charJsonMatch[0]);
+                characterBible = JSON.parse(cleanedJson) as CharacterBible;
                 addLog(`✓ Generated ${characterBible.characters?.length || 0} characters`);
             } else {
                 addLog('⚠ Could not parse Character Bible, continuing...');
@@ -219,7 +285,8 @@ Generate the promptSnippet array for all characters.`;
             let characterSnippets: PromptSnippet[] = [];
 
             if (snippetJsonMatch) {
-                characterSnippets = JSON.parse(snippetJsonMatch[0]) as PromptSnippet[];
+                const cleanedJson = cleanJsonString(snippetJsonMatch[0]);
+                characterSnippets = JSON.parse(cleanedJson) as PromptSnippet[];
                 addLog(`✓ Generated ${characterSnippets.length} prompt snippets`);
             } else {
                 addLog('⚠ Could not parse Snippets, continuing...');
@@ -271,7 +338,8 @@ Generate scene objects for each segment.`;
                 if (sceneResult) {
                     const sceneJsonMatch = sceneResult.match(/\[[\s\S]*\]/);
                     if (sceneJsonMatch) {
-                        const batchScenes = JSON.parse(sceneJsonMatch[0]) as Scene[];
+                        const cleanedJson = cleanJsonString(sceneJsonMatch[0]);
+                        const batchScenes = JSON.parse(cleanedJson) as Scene[];
                         allScenes.push(...batchScenes);
                         addLog(`✓ Generated ${batchScenes.length} scenes`);
                     }
