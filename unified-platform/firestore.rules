@@ -12,9 +12,10 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Check if user is admin
+    // Check if user is admin (with fallback for missing user doc)
     function isAdmin() {
       return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
@@ -29,23 +30,28 @@ service cloud.firestore {
     match /users/{userId} {
       // Users can read their own profile
       allow read: if isOwner(userId);
+      
+      // Users can CREATE their own profile (for new registrations)
+      allow create: if isOwner(userId);
+      
       // Users can update their own profile (except role)
       allow update: if isOwner(userId) && 
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']));
-      // Only admin can create users or change roles
-      allow create, delete: if isAdmin();
+      
       // Admin can read all users
       allow read: if isAdmin();
-      // Admin can update any user
-      allow update: if isAdmin();
+      
+      // Admin can create, update, delete any user
+      allow create, update, delete: if isAdmin();
     }
     
     // ============================================
     // STYLES COLLECTION (Agent System)
     // ============================================
     match /styles/{styleId} {
-      // All authenticated users can read styles
+      // ALL authenticated users can READ styles (for Story/Scene modules)
       allow read: if isAuthenticated();
+      
       // Only admin can create, update, delete styles
       allow create, update, delete: if isAdmin();
     }
@@ -54,12 +60,14 @@ service cloud.firestore {
     // STORIES COLLECTION (Story Factory)
     // ============================================
     match /stories/{storyId} {
-      // Users can read their own stories
+      // Users can read their own stories, admin can read all
       allow read: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
+      
       // Users can create their own stories
       allow create: if isAuthenticated() && 
         request.resource.data.userId == request.auth.uid;
+      
       // Users can update/delete their own stories
       allow update, delete: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
@@ -72,9 +80,11 @@ service cloud.firestore {
       // Users can read their own scenes
       allow read: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
+      
       // Users can create their own scenes
       allow create: if isAuthenticated() && 
         request.resource.data.userId == request.auth.uid;
+      
       // Users can update/delete their own scenes
       allow update, delete: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
@@ -87,9 +97,11 @@ service cloud.firestore {
       // Users can read their own jobs
       allow read: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
+      
       // Users can create their own jobs
       allow create: if isAuthenticated() && 
         request.resource.data.userId == request.auth.uid;
+      
       // Users can update/delete their own jobs
       allow update, delete: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
@@ -102,6 +114,7 @@ service cloud.firestore {
       // Users can read their own transactions
       allow read: if isAuthenticated() && 
         (resource.data.userId == request.auth.uid || isAdmin());
+      
       // Only admin can create/update/delete transactions
       allow create, update, delete: if isAdmin();
     }
@@ -115,7 +128,7 @@ service cloud.firestore {
     }
     
     // ============================================
-    // LOGS COLLECTION (Admin only)
+    // LOGS COLLECTION
     // ============================================
     match /logs/{logId} {
       // Only admin can read logs

@@ -111,8 +111,19 @@ export function StoryWorkspace() {
                     <p className="text-gray-400">Đang tải styles...</p>
                 </div>
             ) : styles.length === 0 ? (
-                <div className="text-center py-12">
-                    <p className="text-gray-400 mb-4">Chưa có styles nào. Vui lòng liên hệ Admin.</p>
+                <div className="text-center py-12 surface-base rounded-xl p-8">
+                    <Sparkles className="w-12 h-12 text-indigo-400 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold text-white mb-2">Chưa có styles nào</h3>
+                    <p className="text-gray-400 mb-6 max-w-md mx-auto">
+                        Vui lòng vào <strong>Admin Dashboard → Quản Lý Styles → Seed Mặc Định</strong> để thêm các phong cách viết mặc định.
+                    </p>
+                    <a
+                        href="/admin"
+                        className="btn-primary inline-flex items-center gap-2 px-6 py-3"
+                    >
+                        Vào Admin Dashboard
+                        <ArrowRight className="w-4 h-4" />
+                    </a>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

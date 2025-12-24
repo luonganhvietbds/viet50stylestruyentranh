@@ -133,8 +133,11 @@ export default function SceneGenPage() {
                                 <Loader2 className="w-6 h-6 text-cyan-400 animate-spin" />
                             </div>
                         ) : styles.length === 0 ? (
-                            <div className="text-center py-4 text-gray-500 text-sm">
-                                Chưa có styles. Vui lòng thêm ở Admin.
+                            <div className="text-center py-6 text-sm">
+                                <p className="text-gray-400 mb-3">Chưa có styles nào.</p>
+                                <a href="/admin" className="text-cyan-400 hover:text-cyan-300 underline text-xs">
+                                    Vào Admin để thêm
+                                </a>
                             </div>
                         ) : (
                             <div className="space-y-2 max-h-64 overflow-y-auto">
@@ -143,8 +146,8 @@ export default function SceneGenPage() {
                                         key={style.id}
                                         onClick={() => selectStyle(style.id)}
                                         className={`w-full text-left p-3 rounded-lg border transition-all ${selectedStyle?.id === style.id
-                                                ? 'bg-cyan-900/20 border-cyan-500 ring-1 ring-cyan-500/50'
-                                                : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                                            ? 'bg-cyan-900/20 border-cyan-500 ring-1 ring-cyan-500/50'
+                                            : 'bg-gray-800 border-gray-700 hover:border-gray-600'
                                             }`}
                                     >
                                         <div className="font-bold text-gray-200 text-sm">{style.label}</div>
@@ -240,8 +243,8 @@ export default function SceneGenPage() {
 
                                 {/* Overall Status */}
                                 <div className={`mt-4 p-2 rounded-lg text-center text-sm font-bold ${currentJob.status === 'COMPLETED' ? 'bg-green-900/30 text-green-400' :
-                                        currentJob.status === 'ERROR' ? 'bg-red-900/30 text-red-400' :
-                                            'bg-cyan-900/30 text-cyan-400'
+                                    currentJob.status === 'ERROR' ? 'bg-red-900/30 text-red-400' :
+                                        'bg-cyan-900/30 text-cyan-400'
                                     }`}>
                                     {currentJob.status}
                                 </div>
@@ -334,9 +337,9 @@ export default function SceneGenPage() {
                                 <div className="p-4 border-t border-gray-800 max-h-64 overflow-y-auto font-mono text-xs">
                                     {currentJob.logs.map((log, idx) => (
                                         <div key={idx} className={`py-1 ${log.includes('✓') || log.includes('✅') ? 'text-green-400' :
-                                                log.includes('❌') || log.includes('Error') ? 'text-red-400' :
-                                                    log.includes('⚠') ? 'text-yellow-400' :
-                                                        'text-gray-400'
+                                            log.includes('❌') || log.includes('Error') ? 'text-red-400' :
+                                                log.includes('⚠') ? 'text-yellow-400' :
+                                                    'text-gray-400'
                                             }`}>
                                             {log}
                                         </div>
@@ -372,8 +375,8 @@ export default function SceneGenPage() {
                                 {jobHistory.map(job => (
                                     <div key={job.id} className="flex items-center gap-3 p-3 bg-gray-800/50 rounded-lg">
                                         <div className={`p-2 rounded-lg ${job.status === 'COMPLETED' ? 'bg-green-900/30' :
-                                                job.status === 'ERROR' ? 'bg-red-900/30' :
-                                                    'bg-gray-800'
+                                            job.status === 'ERROR' ? 'bg-red-900/30' :
+                                                'bg-gray-800'
                                             }`}>
                                             {job.status === 'COMPLETED' ?
                                                 <Check className="w-4 h-4 text-green-400" /> :
