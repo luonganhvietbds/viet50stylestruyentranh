@@ -12,11 +12,24 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Check if user is admin (with fallback for missing user doc)
-    function isAdmin() {
+    // List of admin emails (add your admin emails here)
+    function isAdminEmail() {
+      return request.auth.token.email in [
+        'admin@example.com',
+        'luonganhvietbds@gmail.com'
+      ];
+    }
+    
+    // Check if user is admin by role in Firestore
+    function isAdminByRole() {
       return isAuthenticated() && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Combined admin check - either by email or by role
+    function isAdmin() {
+      return isAuthenticated() && (isAdminEmail() || isAdminByRole());
     }
     
     // Check if user owns the document

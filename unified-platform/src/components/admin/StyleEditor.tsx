@@ -80,20 +80,32 @@ export function StyleEditor({ style, isCreating, onSave, onCancel }: StyleEditor
         setError(null);
 
         try {
-            const dataToSave = {
-                ...formData,
-                createdBy: user?.uid || 'admin',
-            };
-
             if (isCreating) {
+                // For creating, include id
+                const dataToSave = {
+                    ...formData,
+                    createdBy: user?.uid || 'admin',
+                };
                 await createStyle(dataToSave);
             } else {
+                // For updating, exclude id and createdAt
+                const { id, ...updateData } = formData;
+                const dataToSave = {
+                    ...updateData,
+                    createdBy: user?.uid || 'admin',
+                };
                 await updateStyle(formData.id, dataToSave);
             }
             onSave();
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error saving style:', err);
-            setError('Lỗi khi lưu style. Vui lòng thử lại.');
+            // Check for permission error
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            if (errorMessage.includes('permission') || errorMessage.includes('PERMISSION_DENIED')) {
+                setError('Không có quyền lưu style. Vui lòng kiểm tra role Admin trong Firestore.');
+            } else {
+                setError('Lỗi khi lưu style. Vui lòng thử lại.');
+            }
         } finally {
             setSaving(false);
         }
