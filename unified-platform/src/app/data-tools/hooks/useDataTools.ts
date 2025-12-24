@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Scene, AppSettings, ReplaceRule } from '../types';
-import { detectKeys } from '../utils/helpers';
+import { Scene, AppSettings, ReplaceRule, DataAnalysis } from '../types';
+import { analyzeDataStructure, getValueByPath } from '../utils/helpers';
 
 const DEFAULT_SETTINGS: AppSettings = {
     joinSeparator: '\n\n',
@@ -78,8 +78,11 @@ export function useDataTools() {
         }
     }, [selectedKeys]);
 
-    // Auto-detect available keys
-    const availableKeys = useMemo(() => detectKeys(sceneData), [sceneData]);
+    // Enhanced data analysis with full metadata
+    const dataAnalysis: DataAnalysis = useMemo(() => analyzeDataStructure(sceneData), [sceneData]);
+
+    // Legacy: availableKeys for backward compatibility
+    const availableKeys = useMemo(() => dataAnalysis.topLevelKeys, [dataAnalysis]);
 
     // Import data (append)
     const importData = useCallback((newData: Scene[]) => {
@@ -175,12 +178,16 @@ export function useDataTools() {
         importData,
         replaceData,
 
-        // Keys
+        // Keys (legacy)
         availableKeys,
         selectedKeys,
         toggleKey,
         selectAllKeys,
         deselectAllKeys,
+
+        // Enhanced Analysis
+        dataAnalysis,
+        getValueByPath,
 
         // Extraction
         getColumnData,
