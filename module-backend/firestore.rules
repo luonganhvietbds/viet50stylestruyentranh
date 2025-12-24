@@ -1,0 +1,85 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+
+    // Kiểm tra user đã đăng nhập
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Kiểm tra user đang truy cập tài liệu của chính mình
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Kiểm tra user có quyền Admin (đọc từ field 'role' trong users collection)
+    // FIX: Check exists() before get().data to prevent errors on new user creation
+    function isAdmin() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. USERS COLLECTION
+    match /users/{uid} {
+      // Read: Admin đọc tất cả, User chỉ đọc của mình
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Create: User tạo profile khi đăng ký
+      // Bắt buộc: Role phải là 'free', Status phải là 'active' (tránh hack role ngay lúc tạo)
+      allow create: if isOwner(uid) && 
+        request.resource.data.role == 'free' &&
+        request.resource.data.status == 'active';
+
+      // Update: 
+      // - Admin được sửa mọi thứ
+      // - User được sửa profile NHƯNG KHÔNG ĐƯỢC sửa 'role' hoặc 'status'
+      // Simplified Rule: Thay vì dùng diff, kiểm tra trực tiếp giá trị role và status không đổi
+      allow update: if isAdmin() || (
+        isOwner(uid) && 
+        request.resource.data.role == resource.data.role &&
+        request.resource.data.status == resource.data.status
+      );
+      
+      // Delete: Chỉ Admin mới có quyền xóa user khỏi DB
+      allow delete: if isAdmin();
+    }
+
+    // 2. AGENTS COLLECTION
+    match /agents/{agentId} {
+      // Read: Mọi user đã đăng nhập đều cần đọc Agent để sử dụng App
+      allow read: if isSignedIn();
+      
+      // Write: Chỉ Admin được cập nhật/thêm/xóa Agent (Hot Update)
+      allow write: if isAdmin();
+    }
+
+    // 3. TRANSACTIONS COLLECTION
+    match /transactions/{txId} {
+      // Read: Admin xem tất cả, User xem lịch sử giao dịch của mình
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+
+      // Create: User tạo yêu cầu nâng cấp
+      // Bắt buộc: Phải gắn đúng uid của mình và status ban đầu phải là 'pending'
+      allow create: if isSignedIn() && 
+        request.resource.data.uid == request.auth.uid &&
+        request.resource.data.status == 'pending';
+
+      // Update: 
+      // User KHÔNG ĐƯỢC sửa giao dịch đã gửi.
+      // Chỉ Admin (hoặc Cloud Function Admin SDK - bypass rules) được duyệt (sửa status)
+      allow update: if isAdmin();
+    }
+
+    // 4. ADMIN SETTINGS (Dự phòng cho cấu hình hệ thống sau này)
+    match /adminSettings/{doc} {
+      allow read, write: if isAdmin();
+    }
+  }
+}
