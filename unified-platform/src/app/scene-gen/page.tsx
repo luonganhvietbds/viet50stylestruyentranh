@@ -10,6 +10,7 @@ import { AuthScreen } from '../story-factory/components/AuthScreen';
 import { useState } from 'react';
 import { useScenePipeline } from '@/hooks/useScenePipeline';
 import { useApiKey } from '@/contexts/ApiKeyContext';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
 import * as LucideIcons from 'lucide-react';
 
 // Dynamic icon helper
@@ -98,14 +99,17 @@ export default function SceneGenPage() {
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-8">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                    <Video className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                        <Video className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                        <h1 className="font-bold text-white text-xl">ScriptGen AI Agent</h1>
+                        <p className="text-xs text-gray-500">V2 Pipeline · {styles.length} Styles</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 className="font-bold text-white text-xl">ScriptGen AI Agent</h1>
-                    <p className="text-xs text-gray-500">V2 Pipeline · {styles.length} Styles</p>
-                </div>
+                <LanguageToggle />
             </div>
 
             {/* Error Banner */}

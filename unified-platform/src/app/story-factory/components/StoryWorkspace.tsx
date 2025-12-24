@@ -13,12 +13,15 @@ import {
     AlertCircle,
     XCircle,
     Check,
-    RefreshCw
+    RefreshCw,
+    Globe
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiKey } from '@/contexts/ApiKeyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useStoryFlow, StoryStep } from '@/hooks/useStoryFlow';
 import { StoryLength, STORY_LENGTH_CONFIG } from '@/types/styles';
+import { LanguageToggle } from '@/components/ui/LanguageToggle';
 import * as LucideIcons from 'lucide-react';
 
 // Step Indicator Component
@@ -426,6 +429,9 @@ export function StoryWorkspace() {
                 </div>
 
                 <div className="flex items-center gap-3">
+                    {/* Language Toggle */}
+                    <LanguageToggle />
+
                     {/* Role Badge */}
                     {isGold && (
                         <span className="flex items-center gap-1 text-xs font-bold text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded-lg border border-yellow-500/30">
