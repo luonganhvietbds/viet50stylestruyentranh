@@ -4,7 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 let genAIInstance: GoogleGenAI | null = null;
 let currentApiKey: string | null = null;
 
-// Error types that should trigger key rotation
+// Error types that should trigger key rotation or retry
 const ROTATABLE_ERRORS = [
     'API key expired',
     'API_KEY_INVALID',
@@ -14,8 +14,12 @@ const ROTATABLE_ERRORS = [
     'invalid api key',
     'suspended',
     'disabled',
+    'overloaded',
+    'UNAVAILABLE',
     '429',
     '403',
+    '502',
+    '503',
 ];
 
 // Check if error should trigger key rotation
