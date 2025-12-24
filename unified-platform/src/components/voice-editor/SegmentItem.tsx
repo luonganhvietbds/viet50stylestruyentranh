@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Segment } from '@/lib/voice-editor/types';
+import { Segment, SuggestionType } from '@/lib/voice-editor/types';
 import { countSyllables } from '@/lib/voice-editor/syllableCounter';
 import {
     Sparkles,
@@ -28,7 +28,7 @@ interface SegmentItemProps {
     onAddAfter: (id: string) => void;
     onMergeWithNextAi: (id: string) => Promise<void>;
     onManualMerge: (id: string, direction: 'prev' | 'next') => void;
-    onGetAiSuggestion: (segment: Segment, prev: Segment | null, next: Segment | null) => Promise<string[]>;
+    onGetAiSuggestion: (segment: Segment, type?: SuggestionType) => Promise<string>;
     minSyllables: number;
     maxSyllables: number;
 }
@@ -84,7 +84,20 @@ export function SegmentItem({
     const handleGetAiSuggestion = async () => {
         setIsLoadingAi(true);
         setAiSuggestions([]);
-        const suggestions = await onGetAiSuggestion(segment, prevSegment, nextSegment);
+
+        // Get suggestions for all 3 types
+        const types: SuggestionType[] = ['padding', 'contextual', 'optimization'];
+        const suggestions: string[] = [];
+
+        for (const type of types) {
+            try {
+                const suggestion = await onGetAiSuggestion(segment, type);
+                suggestions.push(suggestion);
+            } catch {
+                suggestions.push(`Lỗi khi lấy gợi ý ${type}`);
+            }
+        }
+
         setAiSuggestions(suggestions);
         setIsLoadingAi(false);
     };

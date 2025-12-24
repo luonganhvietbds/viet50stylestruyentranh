@@ -3,14 +3,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Segment, SuggestionType } from '@/lib/voice-editor/types';
 import { countSyllables } from '@/lib/voice-editor/syllableCounter';
+import {
+    getVoiceSuggestion,
+    mergeSegmentsWithAI as mergeWithAI,
+    bulkFixSegments
+} from '@/lib/voice-editor/aiService';
+import { exportSegments } from '@/lib/voice-editor/export';
 import { SegmentItem } from './SegmentItem';
 import { QualityPanel } from './QualityPanel';
-import {
-    getAdvancedSuggestions,
-    bulkFixSegments,
-    mergeSegmentsWithAI,
-    getTargetedSuggestion
-} from '@/services/voiceAiService';
+import { BulkFixModal } from './BulkFixModal';
 import { useApiKey } from '@/contexts/ApiKeyContext';
 import {
     Undo2,
@@ -18,8 +19,10 @@ import {
     Sparkles,
     Trash2,
     Download,
-    Loader2
+    Loader2,
+    Wand2
 } from 'lucide-react';
+
 
 // Custom hook for undo/redo history
 function useHistory<T>(initialState: T) {
@@ -74,7 +77,7 @@ export function SegmentEditor({
     minSyllables,
     maxSyllables
 }: SegmentEditorProps) {
-    const { getNextKey, hasValidKey } = useApiKey();
+    const { getNextKey, hasValidKey, markKeyInvalid } = useApiKey();
     const { state: segments, setState: setSegmentsHistory, undo, redo, canUndo, canRedo } = useHistory<Segment[]>(initialSegments);
     const [selectedSegmentIds, setSelectedSegmentIds] = useState<Set<string>>(new Set());
     const [showInvalidOnly, setShowInvalidOnly] = useState(false);
@@ -177,19 +180,30 @@ export function SegmentEditor({
         const currentSegment = segments[currentIndex];
         const nextSegment = segments[currentIndex + 1];
 
-        const apiKey = getNextKey();
-        if (!apiKey) {
+        if (!hasValidKey) {
             alert('Không có API key khả dụng');
             return;
         }
 
-        const mergedText = await mergeSegmentsWithAI(apiKey, currentSegment, nextSegment, minSyllables, maxSyllables);
+        try {
+            const mergedText = await mergeWithAI(
+                currentSegment.text,
+                nextSegment.text,
+                minSyllables,
+                maxSyllables,
+                getNextKey,
+                markKeyInvalid
+            );
 
-        const newSegments = segments
-            .map(s => s.segment_id === currentId ? { ...s, text: mergedText } : s)
-            .filter(s => s.segment_id !== nextSegment.segment_id);
+            const newSegments = segments
+                .map(s => s.segment_id === currentId ? { ...s, text: mergedText } : s)
+                .filter(s => s.segment_id !== nextSegment.segment_id);
 
-        updateSegments(newSegments, true);
+            updateSegments(newSegments, true);
+        } catch (error) {
+            console.error('Merge error:', error);
+            alert('Có lỗi khi gộp segment');
+        }
     };
 
     const handleManualMerge = (id: string, direction: 'prev' | 'next') => {
@@ -228,12 +242,22 @@ export function SegmentEditor({
         updateSegments(newSegments, true);
     };
 
-    const handleGetAiSuggestion = async (segment: Segment, prev: Segment | null, next: Segment | null): Promise<string[]> => {
-        const apiKey = getNextKey();
-        if (!apiKey) {
-            return ['Không có API key khả dụng'];
+    const handleGetAiSuggestion = async (segment: Segment, type: SuggestionType = 'padding'): Promise<string> => {
+        if (!hasValidKey) {
+            return 'Không có API key khả dụng';
         }
-        return await getAdvancedSuggestions(apiKey, segment, prev, next, minSyllables, maxSyllables);
+        try {
+            return await getVoiceSuggestion(
+                segment.text,
+                type,
+                minSyllables,
+                maxSyllables,
+                getNextKey,
+                markKeyInvalid
+            );
+        } catch (error) {
+            return `Lỗi: ${error instanceof Error ? error.message : 'Unknown'}`;
+        }
     };
 
     const handleBulkDelete = () => {
@@ -244,45 +268,51 @@ export function SegmentEditor({
         }
     };
 
-    const delay = (min: number, max: number) => {
-        return new Promise(resolve => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1) + min)));
-    };
-
-    const handleBulkAiFix = async () => {
-        const apiKey = getNextKey();
-        if (!apiKey) {
+    // Open modal for bulk fix choice
+    const handleOpenBulkFixModal = () => {
+        if (!hasValidKey) {
             alert('Không có API key khả dụng');
             return;
         }
+        setIsChoiceModalOpen(true);
+    };
 
+    // Handle bulk AI fix with chosen type
+    const handleBulkAiFix = async (suggestionType: SuggestionType) => {
+        setIsChoiceModalOpen(false);
         setIsBulkProcessing(true);
-        const segmentsToFix = segments.filter(s => selectedSegmentIds.has(s.segment_id));
+
+        const invalidSegments = segments.filter(
+            s => selectedSegmentIds.has(s.segment_id) && !s.is_valid
+        );
+
+        if (invalidSegments.length === 0) {
+            alert('Không có segment không hợp lệ để sửa');
+            setIsBulkProcessing(false);
+            return;
+        }
 
         try {
-            setBulkProgress({ current: 0, total: segmentsToFix.length });
+            setBulkProgress({ current: 0, total: invalidSegments.length });
 
-            const CHUNK_SIZE = 5;
-            let allFixedSegments: Segment[] = [];
+            const fixedSegments = await bulkFixSegments(
+                invalidSegments,
+                suggestionType,
+                minSyllables,
+                maxSyllables,
+                getNextKey,
+                markKeyInvalid,
+                (current, total) => setBulkProgress({ current, total })
+            );
 
-            for (let i = 0; i < segmentsToFix.length; i += CHUNK_SIZE) {
-                const chunk = segmentsToFix.slice(i, i + CHUNK_SIZE);
-                setBulkProgress({ current: Math.min(i + CHUNK_SIZE, segmentsToFix.length), total: segmentsToFix.length });
-
-                const fixedChunk = await bulkFixSegments(apiKey, chunk, minSyllables, maxSyllables);
-                allFixedSegments = [...allFixedSegments, ...fixedChunk];
-
-                if (i + CHUNK_SIZE < segmentsToFix.length) {
-                    await delay(3000, 5000);
-                }
-            }
-
+            // Merge fixed segments back
             const updatedSegments = segments.map(originalSegment => {
-                const fixedVersion = allFixedSegments.find(fs => fs.segment_id === originalSegment.segment_id);
+                const fixedVersion = fixedSegments.find(fs => fs.segment_id === originalSegment.segment_id);
                 return fixedVersion || originalSegment;
             });
 
             updateSegments(updatedSegments, false);
-            alert("Đã hoàn tất sửa tự động hàng loạt bằng AI.");
+            alert(`Đã sửa ${fixedSegments.filter(s => s.is_valid).length}/${invalidSegments.length} segments.`);
         } catch (error) {
             console.error("Bulk fix error", error);
             alert("Có lỗi xảy ra khi sửa hàng loạt.");
@@ -381,11 +411,11 @@ export function SegmentEditor({
                         <span className="font-semibold">{selectedSegmentIds.size} segments đã được chọn</span>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={handleBulkAiFix}
+                                onClick={handleOpenBulkFixModal}
                                 disabled={isBulkProcessing}
                                 className="flex items-center gap-2 px-3 py-1.5 bg-indigo-400 text-white font-semibold rounded-md text-sm hover:bg-indigo-500 disabled:opacity-50"
                             >
-                                <Sparkles className="w-4 h-4" /> Sửa Tự động
+                                <Wand2 className="w-4 h-4" /> Sửa AI
                             </button>
                             <button
                                 onClick={handleBulkDelete}
@@ -411,6 +441,16 @@ export function SegmentEditor({
                         🤖 AI đang xử lý: {bulkProgress.current}/{bulkProgress.total}...
                     </div>
                 )}
+
+                {/* Bulk Fix Modal */}
+                <BulkFixModal
+                    isOpen={isChoiceModalOpen}
+                    isProcessing={isBulkProcessing}
+                    selectedCount={selectedSegmentIds.size}
+                    progress={bulkProgress}
+                    onClose={() => setIsChoiceModalOpen(false)}
+                    onConfirm={handleBulkAiFix}
+                />
 
                 {/* Segment List */}
                 <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
