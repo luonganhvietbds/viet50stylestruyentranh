@@ -19,9 +19,11 @@ import {
     TrendingUp,
     DollarSign,
     UserPlus,
-    Activity
+    Activity,
+    Palette
 } from 'lucide-react';
 import Link from 'next/link';
+import { StylesPanel } from '@/components/admin/StylesPanel';
 
 // Mock data for demo
 const MOCK_USERS = [
@@ -41,6 +43,7 @@ const STATS = [
 
 const TABS = [
     { id: 'overview', label: 'Tổng Quan', icon: BarChart3 },
+    { id: 'styles', label: 'Quản Lý Styles', icon: Palette },
     { id: 'users', label: 'Quản Lý Users', icon: Users },
     { id: 'payments', label: 'Thanh Toán', icon: CreditCard },
     { id: 'settings', label: 'Cài Đặt', icon: Settings },
@@ -122,8 +125,8 @@ export default function AdminPage() {
                                         key={tab.id}
                                         onClick={() => setActiveTab(tab.id)}
                                         className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${activeTab === tab.id
-                                                ? 'bg-red-500/20 text-red-400'
-                                                : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                                            ? 'bg-red-500/20 text-red-400'
+                                            : 'text-gray-400 hover:text-white hover:bg-gray-800'
                                             }`}
                                     >
                                         <Icon className="w-4 h-4" />
@@ -175,8 +178,8 @@ export default function AdminPage() {
                                 ].map((activity, idx) => (
                                     <div key={idx} className="flex items-center gap-4 py-3 border-b border-gray-800 last:border-0">
                                         <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.type === 'signup' ? 'bg-blue-500/20 text-blue-400' :
-                                                activity.type === 'upgrade' ? 'bg-yellow-500/20 text-yellow-400' :
-                                                    'bg-green-500/20 text-green-400'
+                                            activity.type === 'upgrade' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                'bg-green-500/20 text-green-400'
                                             }`}>
                                             {activity.type === 'signup' ? <UserPlus className="w-4 h-4" /> :
                                                 activity.type === 'upgrade' ? <Crown className="w-4 h-4" /> :
@@ -192,6 +195,11 @@ export default function AdminPage() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* Styles Tab */}
+                {activeTab === 'styles' && (
+                    <StylesPanel />
                 )}
 
                 {/* Users Tab */}
