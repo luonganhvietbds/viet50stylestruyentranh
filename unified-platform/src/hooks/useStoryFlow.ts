@@ -6,7 +6,7 @@ import { getAllStyleAgents } from '@/services/stylesService';
 import { useApiKey } from '@/contexts/ApiKeyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLanguageInstruction, getLanguageLabel } from '@/types/language';
-import { generateContent } from '@/lib/gemini';
+import { generateWithRetry } from '@/lib/gemini';
 
 export type StoryStep = 1 | 2 | 3 | 4 | 5;
 
@@ -41,7 +41,7 @@ interface UseStoryFlowReturn {
 }
 
 export function useStoryFlow(): UseStoryFlowReturn {
-    const { getNextKey, hasValidKey, handleKeyError } = useApiKey();
+    const { getNextKey, hasValidKey, handleKeyError, markKeyInvalid } = useApiKey();
     const { language } = useLanguage();
 
     // Core state
@@ -111,16 +111,10 @@ export function useStoryFlow(): UseStoryFlowReturn {
         setError(null);
     }, []);
 
-    // Generate ideas using Gemini
+    // Generate ideas using Gemini with auto-retry
     const generateIdeas = useCallback(async () => {
         if (!selectedStyle || !userInput.trim() || !hasValidKey) {
             setError('Vui lòng chọn style và nhập ý tưởng');
-            return;
-        }
-
-        const apiKey = getNextKey();
-        if (!apiKey) {
-            setError('Không tìm thấy API key. Vui lòng thêm API key.');
             return;
         }
 
@@ -154,7 +148,13 @@ Return a JSON array with format:
 IMPORTANT: All text content MUST be in ${langLabel}.
 Return ONLY the JSON array, no other text.`;
 
-            const result = await generateContent(apiKey, prompt);
+            const result = await generateWithRetry(
+                getNextKey,
+                markKeyInvalid,
+                prompt,
+                undefined,
+                { maxRetries: 3, delayMs: 1500 }
+            );
 
             if (!result) {
                 throw new Error('Không nhận được kết quả từ AI');
@@ -182,18 +182,12 @@ Return ONLY the JSON array, no other text.`;
         } finally {
             setIsGenerating(false);
         }
-    }, [selectedStyle, userInput, numIdeas, language, hasValidKey, getNextKey, handleKeyError]);
+    }, [selectedStyle, userInput, numIdeas, language, hasValidKey, getNextKey, markKeyInvalid, handleKeyError]);
 
     // Generate full story
     const generateStory = useCallback(async () => {
         if (!selectedStyle || !selectedIdea || !hasValidKey) {
             setError('Vui lòng chọn đủ thông tin');
-            return;
-        }
-
-        const apiKey = getNextKey();
-        if (!apiKey) {
-            setError('Không tìm thấy API key. Vui lòng thêm API key.');
             return;
         }
 
@@ -235,7 +229,13 @@ OUTPUT FORMAT:
 
 [Story content...]`;
 
-            const result = await generateContent(apiKey, prompt);
+            const result = await generateWithRetry(
+                getNextKey,
+                markKeyInvalid,
+                prompt,
+                undefined,
+                { maxRetries: 3, delayMs: 2000 }
+            );
 
             if (!result) {
                 throw new Error('Không nhận được kết quả từ AI');

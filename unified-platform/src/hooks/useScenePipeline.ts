@@ -6,7 +6,7 @@ import { getAllStyleConfigs } from '@/services/stylesService';
 import { useApiKey } from '@/contexts/ApiKeyContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getLanguageLabel } from '@/types/language';
-import { generateContent } from '@/lib/gemini';
+import { generateWithRetry } from '@/lib/gemini';
 
 interface UseScenePipelineReturn {
     // State
@@ -30,7 +30,7 @@ interface UseScenePipelineReturn {
 }
 
 export function useScenePipeline(): UseScenePipelineReturn {
-    const { getNextKey, hasValidKey, handleKeyError } = useApiKey();
+    const { getNextKey, hasValidKey, handleKeyError, markKeyInvalid } = useApiKey();
     const { language } = useLanguage();
 
     // Core state
@@ -157,9 +157,6 @@ export function useScenePipeline(): UseScenePipelineReturn {
             updateJobStep('CHARACTER', 'PROCESSING');
             addLog('Step 1: Generating Character Bible...');
 
-            const apiKey1 = getNextKey();
-            if (!apiKey1) throw new Error('No API key available');
-
             const characterPrompt = `${selectedStyle.characterSystem}
 
 Voice segments:
@@ -167,7 +164,13 @@ ${segments.map((seg, i) => `[VS_${String(i + 1).padStart(3, '0')}] ${seg}`).join
 
 Generate the Character Bible JSON.`;
 
-            const characterResult = await generateContent(apiKey1, characterPrompt);
+            const characterResult = await generateWithRetry(
+                getNextKey,
+                markKeyInvalid,
+                characterPrompt,
+                undefined,
+                { maxRetries: 3, delayMs: 1500 }
+            );
 
             if (!characterResult) {
                 throw new Error('No response from Character Bible generation');
@@ -192,9 +195,6 @@ Generate the Character Bible JSON.`;
             updateJobStep('SNIPPET', 'PROCESSING');
             addLog('Step 2: Generating Prompt Snippets...');
 
-            const apiKey2 = getNextKey();
-            if (!apiKey2) throw new Error('No API key available');
-
             const snippetPrompt = `${selectedStyle.snippetSystem}
 
 Character Bible:
@@ -202,7 +202,13 @@ ${JSON.stringify(characterBible || { characters: [] }, null, 2)}
 
 Generate the promptSnippet array for all characters.`;
 
-            const snippetResult = await generateContent(apiKey2, snippetPrompt);
+            const snippetResult = await generateWithRetry(
+                getNextKey,
+                markKeyInvalid,
+                snippetPrompt,
+                undefined,
+                { maxRetries: 3, delayMs: 1500 }
+            );
 
             if (!snippetResult) {
                 throw new Error('No response from Snippet generation');
@@ -254,7 +260,13 @@ ${batch.map((seg, idx) => `[VS_${String(i + idx + 1).padStart(3, '0')}] ${seg}`)
 
 Generate scene objects for each segment.`;
 
-                const sceneResult = await generateContent(apiKey3, scenePrompt);
+                const sceneResult = await generateWithRetry(
+                    getNextKey,
+                    markKeyInvalid,
+                    scenePrompt,
+                    undefined,
+                    { maxRetries: 3, delayMs: 2000 }
+                );
 
                 if (sceneResult) {
                     const sceneJsonMatch = sceneResult.match(/\[[\s\S]*\]/);
