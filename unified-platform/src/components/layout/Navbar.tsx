@@ -16,7 +16,8 @@ import {
     Star,
     User,
     Key,
-    Shield
+    Shield,
+    ChevronDown
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiKey } from '@/contexts/ApiKeyContext';
@@ -29,9 +30,11 @@ const modules = [
         shortName: 'Story',
         description: 'Viết truyện với 16 styles',
         icon: BookOpen,
-        color: 'from-purple-500 to-indigo-600',
-        bgColor: 'bg-purple-500/10',
-        textColor: 'text-purple-400'
+        accentClass: 'accent-story',
+        gradient: 'from-violet-500 to-purple-600',
+        activeGradient: 'bg-gradient-to-r from-violet-500/20 to-purple-600/20',
+        iconBg: 'bg-violet-500/10',
+        iconColor: 'text-violet-400'
     },
     {
         path: '/scene-gen',
@@ -39,9 +42,11 @@ const modules = [
         shortName: 'Scene',
         description: 'Tạo Scene JSON từ voice',
         icon: Video,
-        color: 'from-cyan-500 to-blue-600',
-        bgColor: 'bg-cyan-500/10',
-        textColor: 'text-cyan-400'
+        accentClass: 'accent-scene',
+        gradient: 'from-cyan-500 to-blue-600',
+        activeGradient: 'bg-gradient-to-r from-cyan-500/20 to-blue-600/20',
+        iconBg: 'bg-cyan-500/10',
+        iconColor: 'text-cyan-400'
     },
     {
         path: '/voice-editor',
@@ -49,9 +54,11 @@ const modules = [
         shortName: 'Voice',
         description: 'Phân tách Voice Segments',
         icon: Mic,
-        color: 'from-green-500 to-emerald-600',
-        bgColor: 'bg-green-500/10',
-        textColor: 'text-green-400'
+        accentClass: 'accent-voice',
+        gradient: 'from-emerald-500 to-green-600',
+        activeGradient: 'bg-gradient-to-r from-emerald-500/20 to-green-600/20',
+        iconBg: 'bg-emerald-500/10',
+        iconColor: 'text-emerald-400'
     },
     {
         path: '/data-tools',
@@ -59,9 +66,11 @@ const modules = [
         shortName: 'Data',
         description: 'Xử lý & phân tích dữ liệu',
         icon: Database,
-        color: 'from-orange-500 to-amber-600',
-        bgColor: 'bg-orange-500/10',
-        textColor: 'text-orange-400'
+        accentClass: 'accent-data',
+        gradient: 'from-orange-500 to-amber-600',
+        activeGradient: 'bg-gradient-to-r from-orange-500/20 to-amber-600/20',
+        iconBg: 'bg-orange-500/10',
+        iconColor: 'text-orange-400'
     },
 ];
 
@@ -70,110 +79,179 @@ export function Navbar() {
     const { user, signOut, isAdmin, isPremium, isGold } = useAuth();
     const { openModal: openApiKeyModal, hasValidKey } = useApiKey();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [userMenuOpen, setUserMenuOpen] = useState(false);
 
     const getRoleBadge = () => {
-        if (isAdmin) return { icon: Shield, text: 'ADMIN', className: 'bg-red-500/20 text-red-400 border-red-500/30' };
-        if (isGold) return { icon: Crown, text: 'GOLD', className: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' };
-        if (isPremium) return { icon: Star, text: 'SILVER', className: 'bg-blue-500/20 text-blue-400 border-blue-500/30' };
-        return { icon: User, text: 'FREE', className: 'bg-gray-500/20 text-gray-400 border-gray-500/30' };
+        if (isAdmin) return { icon: Shield, text: 'ADMIN', className: 'badge-admin' };
+        if (isGold) return { icon: Crown, text: 'GOLD', className: 'badge-gold' };
+        if (isPremium) return { icon: Star, text: 'SILVER', className: 'badge-silver' };
+        return { icon: User, text: 'FREE', className: 'badge-free' };
     };
 
     const roleBadge = getRoleBadge();
 
     return (
-        <header className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-xl border-b border-gray-800">
+        <header className="sticky top-0 z-50 glass border-b border-[rgb(var(--border-subtle))]">
             <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
                     <Link href="/" className="flex items-center gap-3 group">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-shadow">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
                             <span className="text-white font-bold text-lg">16</span>
                         </div>
                         <div className="hidden sm:block">
-                            <h1 className="font-bold text-white text-lg">16Styles AI</h1>
-                            <p className="text-xs text-gray-500">Unified Platform</p>
+                            <h1 className="font-bold text-[rgb(var(--text-primary))] text-lg">16Styles AI</h1>
+                            <p className="text-xs text-[rgb(var(--text-tertiary))]">Unified Platform</p>
                         </div>
                     </Link>
 
                     {/* Desktop Navigation */}
                     <div className="hidden md:flex items-center gap-1">
                         {modules.map((module) => {
-                            const isActive = pathname.startsWith(module.path);
                             const Icon = module.icon;
+                            const isActive = pathname === module.path;
                             return (
                                 <Link
                                     key={module.path}
                                     href={module.path}
                                     className={cn(
-                                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                                        'relative px-4 py-2 rounded-lg flex items-center gap-2 transition-all duration-200',
                                         isActive
-                                            ? `bg-gradient-to-r ${module.color} text-white shadow-lg`
-                                            : `${module.bgColor} ${module.textColor} hover:bg-gray-800`
+                                            ? `${module.activeGradient} border border-transparent`
+                                            : 'hover:bg-[rgb(var(--hover-overlay)/0.05)] border border-transparent'
                                     )}
                                 >
-                                    <Icon className="w-4 h-4" />
-                                    <span className="hidden lg:inline">{module.shortName}</span>
+                                    <div className={cn(
+                                        'p-1.5 rounded-md transition-colors',
+                                        isActive ? module.iconBg : 'bg-transparent'
+                                    )}>
+                                        <Icon className={cn(
+                                            'w-4 h-4 transition-colors',
+                                            isActive ? module.iconColor : 'text-[rgb(var(--text-tertiary))]'
+                                        )} />
+                                    </div>
+                                    <span className={cn(
+                                        'text-sm font-medium transition-colors',
+                                        isActive ? 'text-[rgb(var(--text-primary))]' : 'text-[rgb(var(--text-secondary))]'
+                                    )}>
+                                        {module.shortName}
+                                    </span>
+                                    {isActive && (
+                                        <div className={`absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-gradient-to-r ${module.gradient}`} />
+                                    )}
                                 </Link>
                             );
                         })}
                     </div>
 
-                    {/* Right Section */}
+                    {/* Right Side */}
                     <div className="flex items-center gap-3">
-                        {/* API Key Button */}
-                        <button
-                            onClick={openApiKeyModal}
-                            className={cn(
-                                "p-2 rounded-lg transition-colors",
-                                hasValidKey
-                                    ? "text-gray-400 hover:text-white hover:bg-gray-800"
-                                    : "text-red-400 bg-red-900/20 animate-pulse"
-                            )}
-                            title={hasValidKey ? "Quản lý API Keys" : "Chưa có API Key!"}
-                        >
-                            <Key className="w-5 h-5" />
-                        </button>
-
-                        {/* Admin Link */}
-                        {isAdmin && (
-                            <Link
-                                href="/admin"
-                                className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-                                title="Admin Panel"
+                        {/* API Key Status */}
+                        {user && (
+                            <button
+                                onClick={openApiKeyModal}
+                                className={cn(
+                                    'hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-all',
+                                    hasValidKey
+                                        ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                                        : 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 animate-pulse'
+                                )}
                             >
-                                <Shield className="w-5 h-5" />
-                            </Link>
+                                <Key className="w-4 h-4" />
+                                <span className="text-xs font-medium">
+                                    {hasValidKey ? 'API Key' : 'Add Key'}
+                                </span>
+                            </button>
                         )}
 
-                        {/* User Info */}
+                        {/* User Menu */}
                         {user ? (
-                            <div className="hidden sm:flex items-center gap-2 bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5">
-                                <div className="text-right">
-                                    <p className="text-xs font-medium text-white truncate max-w-[100px]">
-                                        {user.displayName || user.email?.split('@')[0]}
-                                    </p>
-                                    <div className={cn(
-                                        "flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border",
-                                        roleBadge.className
-                                    )}>
-                                        <roleBadge.icon className="w-2.5 h-2.5" />
-                                        {roleBadge.text}
-                                    </div>
-                                </div>
+                            <div className="relative">
                                 <button
-                                    onClick={() => signOut()}
-                                    className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded transition-colors"
-                                    title="Đăng xuất"
+                                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[rgb(var(--bg-elevated))] border border-[rgb(var(--border-subtle))] hover:border-[rgb(var(--border-default))] transition-all"
                                 >
-                                    <LogOut className="w-4 h-4" />
+                                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                                        {user.photoURL ? (
+                                            <img src={user.photoURL} alt="" className="w-full h-full rounded-full object-cover" />
+                                        ) : (
+                                            <span className="text-xs font-bold text-white">
+                                                {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="hidden sm:block text-left">
+                                        <p className="text-sm font-medium text-[rgb(var(--text-primary))] truncate max-w-[100px]">
+                                            {user.displayName || 'User'}
+                                        </p>
+                                    </div>
+                                    <span className={`badge ${roleBadge.className}`}>
+                                        <roleBadge.icon className="w-3 h-3" />
+                                        {roleBadge.text}
+                                    </span>
+                                    <ChevronDown className={cn(
+                                        'w-4 h-4 text-[rgb(var(--text-tertiary))] transition-transform',
+                                        userMenuOpen && 'rotate-180'
+                                    )} />
                                 </button>
+
+                                {/* Dropdown */}
+                                {userMenuOpen && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-10"
+                                            onClick={() => setUserMenuOpen(false)}
+                                        />
+                                        <div className="absolute right-0 mt-2 w-56 py-2 rounded-xl surface-overlay z-20">
+                                            <div className="px-4 py-2 border-b border-[rgb(var(--border-subtle))]">
+                                                <p className="text-sm font-medium text-[rgb(var(--text-primary))]">{user.displayName || 'User'}</p>
+                                                <p className="text-xs text-[rgb(var(--text-tertiary))] truncate">{user.email}</p>
+                                            </div>
+
+                                            {isAdmin && (
+                                                <Link
+                                                    href="/admin"
+                                                    className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                                    onClick={() => setUserMenuOpen(false)}
+                                                >
+                                                    <Shield className="w-4 h-4" />
+                                                    Admin Dashboard
+                                                </Link>
+                                            )}
+
+                                            <button
+                                                onClick={openApiKeyModal}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--hover-overlay)/0.05)] transition-colors"
+                                            >
+                                                <Key className="w-4 h-4" />
+                                                Quản lý API Keys
+                                            </button>
+
+                                            <button
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--hover-overlay)/0.05)] transition-colors"
+                                            >
+                                                <Settings className="w-4 h-4" />
+                                                Cài đặt
+                                            </button>
+
+                                            <div className="my-1 border-t border-[rgb(var(--border-subtle))]" />
+
+                                            <button
+                                                onClick={() => { signOut(); setUserMenuOpen(false); }}
+                                                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                                            >
+                                                <LogOut className="w-4 h-4" />
+                                                Đăng xuất
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <Link
                                 href="/login"
-                                className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-medium text-sm transition-all"
+                                className="btn-primary px-4 py-2 text-sm"
                             >
-                                <User className="w-4 h-4" />
                                 Đăng nhập
                             </Link>
                         )}
@@ -181,75 +259,62 @@ export function Navbar() {
                         {/* Mobile Menu Button */}
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="md:hidden p-2 text-gray-400 hover:text-white"
+                            className="md:hidden p-2 rounded-lg text-[rgb(var(--text-secondary))] hover:bg-[rgb(var(--bg-elevated))] transition-colors"
                         >
-                            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </button>
                     </div>
                 </div>
 
                 {/* Mobile Menu */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden py-4 border-t border-gray-800 space-y-2">
-                        {modules.map((module) => {
-                            const isActive = pathname.startsWith(module.path);
-                            const Icon = module.icon;
-                            return (
-                                <Link
-                                    key={module.path}
-                                    href={module.path}
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className={cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
-                                        isActive
-                                            ? `bg-gradient-to-r ${module.color} text-white`
-                                            : "text-gray-300 hover:bg-gray-800"
-                                    )}
-                                >
-                                    <Icon className="w-5 h-5" />
-                                    <div>
-                                        <p className="font-medium">{module.name}</p>
-                                        <p className="text-xs opacity-70">{module.description}</p>
-                                    </div>
-                                </Link>
-                            );
-                        })}
-
-                        {/* Mobile User Section */}
-                        {user ? (
-                            <div className="pt-4 mt-4 border-t border-gray-800">
-                                <div className="flex items-center justify-between px-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
-                                            <User className="w-5 h-5 text-gray-400" />
+                    <div className="md:hidden py-4 border-t border-[rgb(var(--border-subtle))]">
+                        <div className="space-y-1">
+                            {modules.map((module) => {
+                                const Icon = module.icon;
+                                const isActive = pathname === module.path;
+                                return (
+                                    <Link
+                                        key={module.path}
+                                        href={module.path}
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className={cn(
+                                            'flex items-center gap-3 px-4 py-3 rounded-lg transition-all',
+                                            isActive
+                                                ? `${module.activeGradient}`
+                                                : 'hover:bg-[rgb(var(--bg-elevated))]'
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            'p-2 rounded-lg',
+                                            isActive ? module.iconBg : 'bg-[rgb(var(--bg-elevated))]'
+                                        )}>
+                                            <Icon className={cn(
+                                                'w-5 h-5',
+                                                isActive ? module.iconColor : 'text-[rgb(var(--text-tertiary))]'
+                                            )} />
                                         </div>
                                         <div>
-                                            <p className="font-medium text-white">{user.displayName || user.email}</p>
-                                            <div className={cn(
-                                                "inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border mt-1",
-                                                roleBadge.className
+                                            <p className={cn(
+                                                'font-medium',
+                                                isActive ? 'text-[rgb(var(--text-primary))]' : 'text-[rgb(var(--text-secondary))]'
                                             )}>
-                                                <roleBadge.icon className="w-2.5 h-2.5" />
-                                                {roleBadge.text}
-                                            </div>
+                                                {module.name}
+                                            </p>
+                                            <p className="text-xs text-[rgb(var(--text-tertiary))]">{module.description}</p>
                                         </div>
-                                    </div>
-                                    <button
-                                        onClick={() => signOut()}
-                                        className="p-2 text-red-400 hover:bg-red-900/20 rounded-lg"
-                                    >
-                                        <LogOut className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="pt-4 mt-4 border-t border-gray-800 px-4">
+                                    </Link>
+                                );
+                            })}
+                        </div>
+
+                        {!user && (
+                            <div className="mt-4 pt-4 border-t border-[rgb(var(--border-subtle))]">
                                 <Link
                                     href="/login"
+                                    className="btn-primary w-full py-3 text-center block"
                                     onClick={() => setMobileMenuOpen(false)}
-                                    className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all"
                                 >
-                                    <User className="w-5 h-5" />
                                     Đăng nhập / Đăng ký
                                 </Link>
                             </div>

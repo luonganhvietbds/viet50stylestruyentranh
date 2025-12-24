@@ -10,7 +10,9 @@ import {
   Sparkles,
   Zap,
   Shield,
-  Key
+  Key,
+  Star,
+  Check
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApiKey } from '@/contexts/ApiKeyContext';
@@ -19,95 +21,153 @@ const modules = [
   {
     path: '/story-factory',
     name: 'AI Story Factory',
-    description: 'Viết kịch bản truyện với 16 phong cách khác nhau. Tạo ý tưởng, phát triển cốt truyện và xuất bản tác phẩm của bạn.',
+    description: 'Viết kịch bản truyện với 16 phong cách khác nhau. Tạo ý tưởng, phát triển cốt truyện và xuất bản.',
     icon: BookOpen,
-    gradient: 'from-purple-500 to-indigo-600',
-    features: ['16 Writing Styles', 'Idea Generation', 'Story Library', 'Multi-chapter Support']
+    gradient: 'from-violet-500 to-purple-600',
+    bgGlow: 'bg-violet-500/20',
+    iconBg: 'bg-violet-500/10',
+    iconColor: 'text-violet-400',
+    features: ['16 Writing Styles', 'Idea Generation', 'Story Library']
   },
   {
     path: '/scene-gen',
     name: 'ScriptGen AI Agent',
-    description: 'Chuyển đổi voice data thành Scene JSON với pipeline multi-agent. Tạo characters, snippets và scenes tự động.',
+    description: 'Chuyển đổi voice data thành Scene JSON với pipeline multi-agent. Tạo characters và scenes tự động.',
     icon: Video,
     gradient: 'from-cyan-500 to-blue-600',
-    features: ['Multi-Agent Pipeline', 'Character Bible', 'Scene Generation', 'Batch Processing']
+    bgGlow: 'bg-cyan-500/20',
+    iconBg: 'bg-cyan-500/10',
+    iconColor: 'text-cyan-400',
+    features: ['Multi-Agent Pipeline', 'Character Bible', 'Batch Processing']
   },
   {
     path: '/voice-editor',
     name: 'VietVoice Pro Editor',
-    description: 'Phân tách văn bản thành voice segments tối ưu cho TTS. Kiểm soát độ dài âm tiết và chỉnh sửa theo thời gian thực.',
+    description: 'Phân tách văn bản thành voice segments tối ưu cho TTS. Kiểm soát độ dài và chỉnh sửa real-time.',
     icon: Mic,
-    gradient: 'from-green-500 to-emerald-600',
-    features: ['Syllable Counting', 'Segment Optimization', 'Real-time Editor', 'JSON Export']
+    gradient: 'from-emerald-500 to-green-600',
+    bgGlow: 'bg-emerald-500/20',
+    iconBg: 'bg-emerald-500/10',
+    iconColor: 'text-emerald-400',
+    features: ['Syllable Counting', 'Segment Optimization', 'JSON Export']
   },
   {
     path: '/data-tools',
     name: 'SceneJSON Pro VN',
-    description: 'Công cụ xử lý và phân tích dữ liệu Scene JSON chuyên nghiệp. Import, trích xuất, thay thế và chuẩn hóa prompt.',
+    description: 'Công cụ xử lý và phân tích dữ liệu Scene JSON chuyên nghiệp. Import, trích xuất và chuẩn hóa.',
     icon: Database,
     gradient: 'from-orange-500 to-amber-600',
-    features: ['Data Import/Export', 'JSON Replacement', 'Gemini Integration', 'TVC Extraction']
+    bgGlow: 'bg-orange-500/20',
+    iconBg: 'bg-orange-500/10',
+    iconColor: 'text-orange-400',
+    features: ['Data Import/Export', 'Gemini Integration', 'TVC Extraction']
   },
 ];
 
+const features = [
+  {
+    icon: Zap,
+    iconBg: 'bg-indigo-500/10',
+    iconColor: 'text-indigo-400',
+    title: 'Single Sign-On',
+    description: 'Đăng nhập một lần, sử dụng tất cả module. Dữ liệu đồng bộ xuyên suốt.'
+  },
+  {
+    icon: Key,
+    iconBg: 'bg-emerald-500/10',
+    iconColor: 'text-emerald-400',
+    title: 'API Key Rotation',
+    description: 'Xoay vòng key tự động để tránh rate limit và tối ưu chi phí API.'
+  },
+  {
+    icon: Shield,
+    iconBg: 'bg-violet-500/10',
+    iconColor: 'text-violet-400',
+    title: 'Role-Based Access',
+    description: 'Phân quyền Free, Silver, Gold với các tính năng premium khác nhau.'
+  }
+];
+
 export default function HomePage() {
-  const { user, isPremium, isGold } = useAuth();
+  const { user } = useAuth();
   const { hasValidKey, openModal } = useApiKey();
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative py-20 px-4 overflow-hidden">
+      <section className="relative py-24 px-4 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-[-20%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-3xl" />
+          <div className="absolute top-[-20%] right-[-10%] w-[700px] h-[700px] bg-gradient-radial from-indigo-600/15 to-transparent rounded-full blur-3xl" />
+          <div className="absolute bottom-[-30%] left-[-10%] w-[600px] h-[600px] bg-gradient-radial from-purple-600/10 to-transparent rounded-full blur-3xl" />
+          <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] bg-gradient-radial from-cyan-600/5 to-transparent rounded-full blur-3xl" />
         </div>
 
         <div className="max-w-7xl mx-auto relative">
           {/* Welcome Badge */}
           <div className="flex justify-center mb-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full">
+            <div className="inline-flex items-center gap-2 px-4 py-2 surface-base rounded-full">
               <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span className="text-sm text-indigo-300 font-medium">
+              <span className="text-sm text-[rgb(var(--text-secondary))] font-medium">
                 {user ? `Xin chào, ${user.displayName || user.email?.split('@')[0]}!` : 'AI-Powered Content Creation'}
               </span>
             </div>
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-4xl md:text-6xl font-bold text-center mb-6">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-center mb-6 tracking-tight">
             <span className="bg-gradient-to-r from-white via-indigo-200 to-purple-200 bg-clip-text text-transparent">
-              16Styles AI Platform
+              16Styles AI
             </span>
           </h1>
-          <p className="text-xl text-gray-400 text-center max-w-3xl mx-auto mb-12">
+          <p className="text-lg md:text-xl text-[rgb(var(--text-tertiary))] text-center max-w-3xl mx-auto mb-12 leading-relaxed">
             Nền tảng hợp nhất 4 công cụ AI mạnh mẽ cho sáng tạo nội dung.
             Từ viết truyện đến xử lý dữ liệu, tất cả trong một.
           </p>
 
-          {/* Quick Actions */}
-          {!hasValidKey && (
-            <div className="flex justify-center mb-12">
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            {!hasValidKey ? (
               <button
                 onClick={openModal}
-                className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40"
+                className="btn-primary flex items-center gap-3 px-8 py-4 text-lg"
               >
                 <Key className="w-5 h-5" />
                 Thêm API Key để bắt đầu
                 <ArrowRight className="w-5 h-5" />
               </button>
-            </div>
-          )}
+            ) : (
+              <Link
+                href="/story-factory"
+                className="btn-primary flex items-center gap-3 px-8 py-4 text-lg"
+              >
+                <Sparkles className="w-5 h-5" />
+                Bắt đầu sáng tạo
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            )}
+
+            {hasValidKey && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm text-emerald-400 font-medium">API Key đã sẵn sàng</span>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
       {/* Modules Grid */}
-      <section className="py-16 px-4">
+      <section className="py-20 px-4">
         <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl font-bold text-white text-center mb-12">
-            Chọn Công Cụ
-          </h2>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-[rgb(var(--text-primary))] mb-4">
+              Chọn Công Cụ
+            </h2>
+            <p className="text-[rgb(var(--text-tertiary))] max-w-2xl mx-auto">
+              4 module chuyên biệt, tích hợp trong một nền tảng duy nhất
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {modules.map((module) => {
@@ -116,25 +176,28 @@ export default function HomePage() {
                 <Link
                   key={module.path}
                   href={module.path}
-                  className="group relative bg-gray-900/50 border border-gray-800 rounded-2xl p-6 hover:border-gray-700 transition-all hover:shadow-xl hover:shadow-black/20"
+                  className="group relative card p-6 card-interactive"
                 >
-                  {/* Gradient Overlay on Hover */}
-                  <div className={`absolute inset-0 bg-gradient-to-br ${module.gradient} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity`} />
+                  {/* Glow Effect on Hover */}
+                  <div className={`absolute -inset-px ${module.bgGlow} opacity-0 group-hover:opacity-100 rounded-xl blur-xl transition-opacity duration-500`} />
 
                   <div className="relative">
                     {/* Header */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${module.gradient} flex items-center justify-center shadow-lg`}>
+                    <div className="flex items-start justify-between mb-5">
+                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${module.gradient} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                         <Icon className="w-7 h-7 text-white" />
                       </div>
-                      <ArrowRight className="w-5 h-5 text-gray-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-sm text-[rgb(var(--text-tertiary))]">Open</span>
+                        <ArrowRight className="w-5 h-5 text-[rgb(var(--text-tertiary))] group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </div>
 
                     {/* Content */}
-                    <h3 className="text-xl font-bold text-white mb-2 group-hover:text-indigo-300 transition-colors">
+                    <h3 className="text-xl font-bold text-[rgb(var(--text-primary))] mb-2 group-hover:text-[rgb(var(--brand-primary-light))] transition-colors">
                       {module.name}
                     </h3>
-                    <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                    <p className="text-[rgb(var(--text-tertiary))] text-sm mb-5 leading-relaxed">
                       {module.description}
                     </p>
 
@@ -143,7 +206,7 @@ export default function HomePage() {
                       {module.features.map((feature) => (
                         <span
                           key={feature}
-                          className="text-xs px-2 py-1 bg-gray-800 text-gray-400 rounded-md"
+                          className="text-xs px-3 py-1.5 bg-[rgb(var(--bg-elevated))] text-[rgb(var(--text-tertiary))] rounded-md border border-[rgb(var(--border-subtle))]"
                         >
                           {feature}
                         </span>
@@ -158,46 +221,81 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 px-4 border-t border-gray-800">
+      <section className="py-20 px-4 border-t border-[rgb(var(--border-subtle))]">
         <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-[rgb(var(--text-primary))] mb-4">
+              Tính Năng Nổi Bật
+            </h2>
+            <p className="text-[rgb(var(--text-tertiary))]">
+              Được thiết kế cho hiệu suất và trải nghiệm người dùng
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-6 h-6 text-indigo-400" />
+            {features.map((feature, idx) => {
+              const Icon = feature.icon;
+              return (
+                <div key={idx} className="text-center group">
+                  <div className={`w-16 h-16 rounded-2xl ${feature.iconBg} flex items-center justify-center mx-auto mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon className={`w-7 h-7 ${feature.iconColor}`} />
+                  </div>
+                  <h3 className="text-lg font-semibold text-[rgb(var(--text-primary))] mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-sm text-[rgb(var(--text-tertiary))] leading-relaxed max-w-xs mx-auto">
+                    {feature.description}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="surface-elevated rounded-2xl p-8 md:p-12">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              <div>
+                <p className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">16</p>
+                <p className="text-sm text-[rgb(var(--text-tertiary))] mt-1">Writing Styles</p>
               </div>
-              <h3 className="font-semibold text-white mb-2">Single Sign-On</h3>
-              <p className="text-sm text-gray-500">
-                Đăng nhập một lần, sử dụng tất cả 4 module. Dữ liệu đồng bộ xuyên suốt.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                <Key className="w-6 h-6 text-green-400" />
+              <div>
+                <p className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">4</p>
+                <p className="text-sm text-[rgb(var(--text-tertiary))] mt-1">AI Modules</p>
               </div>
-              <h3 className="font-semibold text-white mb-2">API Key Rotation</h3>
-              <p className="text-sm text-gray-500">
-                Hệ thống xoay vòng key tự động để tránh rate limit và tối ưu chi phí.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mx-auto mb-4">
-                <Shield className="w-6 h-6 text-purple-400" />
+              <div>
+                <p className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">∞</p>
+                <p className="text-sm text-[rgb(var(--text-tertiary))] mt-1">Possibilities</p>
               </div>
-              <h3 className="font-semibold text-white mb-2">Role-Based Access</h3>
-              <p className="text-sm text-gray-500">
-                Phân quyền Free, Silver, Gold với các tính năng premium khác nhau.
-              </p>
+              <div>
+                <p className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">1</p>
+                <p className="text-sm text-[rgb(var(--text-tertiary))] mt-1">Platform</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-8 px-4 border-t border-gray-800">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-sm text-gray-500">
-            16Styles AI Platform © 2025. Built with Next.js, Firebase & Gemini AI.
-          </p>
+      <footer className="py-10 px-4 border-t border-[rgb(var(--border-subtle))]">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <span className="text-white font-bold">16</span>
+              </div>
+              <div>
+                <p className="font-semibold text-[rgb(var(--text-primary))]">16Styles AI</p>
+                <p className="text-xs text-[rgb(var(--text-tertiary))]">Unified Platform</p>
+              </div>
+            </div>
+            <p className="text-sm text-[rgb(var(--text-tertiary))]">
+              © 2025. Built with Next.js, Firebase & Gemini AI.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
