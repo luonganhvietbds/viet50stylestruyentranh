@@ -88,13 +88,19 @@ export function StyleEditor({ style, isCreating, onSave, onCancel }: StyleEditor
                 };
                 await createStyle(dataToSave);
             } else {
-                // For updating, exclude id and createdAt
-                const { id, ...updateData } = formData;
-                const dataToSave = {
-                    ...updateData,
+                // For updating, exclude id, createdAt, updatedAt (they are managed by service)
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const { id, createdAt, updatedAt, ...updateData } = formData as typeof formData & { createdAt?: unknown; updatedAt?: unknown };
+
+                // Remove any remaining undefined values
+                const cleanData = Object.fromEntries(
+                    Object.entries(updateData).filter(([_, v]) => v !== undefined)
+                );
+
+                await updateStyle(formData.id, {
+                    ...cleanData,
                     createdBy: user?.uid || 'admin',
-                };
-                await updateStyle(formData.id, dataToSave);
+                });
             }
             onSave();
         } catch (err: unknown) {
@@ -103,6 +109,8 @@ export function StyleEditor({ style, isCreating, onSave, onCancel }: StyleEditor
             const errorMessage = err instanceof Error ? err.message : String(err);
             if (errorMessage.includes('permission') || errorMessage.includes('PERMISSION_DENIED')) {
                 setError('Không có quyền lưu style. Vui lòng kiểm tra role Admin trong Firestore.');
+            } else if (errorMessage.includes('undefined')) {
+                setError('Dữ liệu không hợp lệ. Vui lòng điền đầy đủ các trường bắt buộc.');
             } else {
                 setError('Lỗi khi lưu style. Vui lòng thử lại.');
             }
