@@ -10,9 +10,7 @@ import {
     deleteDoc,
     query,
     where,
-    orderBy,
     serverTimestamp,
-    Timestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UnifiedStyle, StyleAgent, StyleConfig, toStyleAgent, toStyleConfig } from '@/types/styles';
@@ -25,44 +23,42 @@ const STYLES_COLLECTION = 'styles';
 
 /**
  * Get all styles from Firestore
+ * Note: Sorts in-memory to avoid needing a Firestore index
  */
 export async function getAllStyles(): Promise<UnifiedStyle[]> {
     try {
         const stylesRef = collection(db, STYLES_COLLECTION);
-        const q = query(stylesRef, orderBy('name'));
-        const snapshot = await getDocs(q);
+        const snapshot = await getDocs(stylesRef);
 
-        return snapshot.docs.map(doc => ({
+        const styles = snapshot.docs.map(doc => ({
             ...doc.data(),
             id: doc.id,
             createdAt: doc.data().createdAt?.toDate() || new Date(),
             updatedAt: doc.data().updatedAt?.toDate() || new Date(),
         })) as UnifiedStyle[];
+
+        // Sort by name in-memory
+        return styles.sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
         console.error('Error fetching styles:', error);
+        // Return empty array to avoid breaking UI
         return [];
     }
 }
 
 /**
  * Get only active styles
+ * Note: Filters in-memory to avoid needing a composite index
  */
 export async function getActiveStyles(): Promise<UnifiedStyle[]> {
     try {
-        const stylesRef = collection(db, STYLES_COLLECTION);
-        const q = query(
-            stylesRef,
-            where('isActive', '==', true),
-            orderBy('name')
-        );
-        const snapshot = await getDocs(q);
+        // Fetch all styles first (to avoid composite index requirement)
+        const allStyles = await getAllStyles();
 
-        return snapshot.docs.map(doc => ({
-            ...doc.data(),
-            id: doc.id,
-            createdAt: doc.data().createdAt?.toDate() || new Date(),
-            updatedAt: doc.data().updatedAt?.toDate() || new Date(),
-        })) as UnifiedStyle[];
+        // Filter active styles and sort by name
+        return allStyles
+            .filter(style => style.isActive === true)
+            .sort((a, b) => a.name.localeCompare(b.name));
     } catch (error) {
         console.error('Error fetching active styles:', error);
         return [];
