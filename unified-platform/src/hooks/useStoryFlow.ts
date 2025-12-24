@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { StyleAgent, StoryIdea, StoryLength, GeneratedStory } from '@/types/styles';
 import { getAllStyleAgents } from '@/services/stylesService';
 import { useApiKey } from '@/contexts/ApiKeyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLanguageInstruction, getLanguageLabel } from '@/types/language';
 import { generateContent } from '@/lib/gemini';
 
 export type StoryStep = 1 | 2 | 3 | 4 | 5;
@@ -40,6 +42,7 @@ interface UseStoryFlowReturn {
 
 export function useStoryFlow(): UseStoryFlowReturn {
     const { getNextKey, hasValidKey, handleKeyError } = useApiKey();
+    const { language } = useLanguage();
 
     // Core state
     const [currentStep, setCurrentStep] = useState<StoryStep>(1);
@@ -125,24 +128,31 @@ export function useStoryFlow(): UseStoryFlowReturn {
         setError(null);
 
         try {
+            const langInstruction = getLanguageInstruction(language);
+            const langLabel = getLanguageLabel(language);
+
             const prompt = `${selectedStyle.systemPrompt}
 
-Dựa trên mô tả sau, hãy tạo ${numIdeas} ý tưởng truyện độc đáo:
+# LANGUAGE SETTING
+${langInstruction}
+
+Based on the following description, create ${numIdeas} unique story ideas:
 "${userInput}"
 
-Trả về JSON array với format:
+Return a JSON array with format:
 [
   {
     "id": "idea_1",
-    "title": "Tiêu đề ngắn gọn",
-    "hook": "Câu mở đầu hấp dẫn (1-2 câu)",
-    "summary": "Tóm tắt cốt truyện (3-4 câu)",
-    "conflict": "Mâu thuẫn chính",
-    "tone": "Tone giọng (ví dụ: Nghiêm túc, Hài hước, Kịch tính)"
+    "title": "Short catchy title",
+    "hook": "Compelling opening hook (1-2 sentences)",
+    "summary": "Plot summary (3-4 sentences)",
+    "conflict": "Main conflict",
+    "tone": "Story tone (e.g., Serious, Humorous, Dramatic)"
   }
 ]
 
-CHỈ trả về JSON array, không có text khác.`;
+IMPORTANT: All text content MUST be in ${langLabel}.
+Return ONLY the JSON array, no other text.`;
 
             const result = await generateContent(apiKey, prompt);
 
@@ -172,7 +182,7 @@ CHỈ trả về JSON array, không có text khác.`;
         } finally {
             setIsGenerating(false);
         }
-    }, [selectedStyle, userInput, numIdeas, hasValidKey, getNextKey, handleKeyError]);
+    }, [selectedStyle, userInput, numIdeas, language, hasValidKey, getNextKey, handleKeyError]);
 
     // Generate full story
     const generateStory = useCallback(async () => {
@@ -191,32 +201,39 @@ CHỈ trả về JSON array, không có text khác.`;
         setError(null);
 
         try {
+            const langInstruction = getLanguageInstruction(language);
+            const langLabel = getLanguageLabel(language);
+
             const lengthGuide = {
-                Short: '300-500 từ',
-                Medium: '800-1500 từ',
-                Long: '2000-4000 từ',
-                Epic: '5000+ từ'
+                Short: language === 'vi' ? '300-500 từ' : '300-500 words',
+                Medium: language === 'vi' ? '800-1500 từ' : '800-1500 words',
+                Long: language === 'vi' ? '2000-4000 từ' : '2000-4000 words',
+                Epic: language === 'vi' ? '5000+ từ' : '5000+ words'
             };
 
             const prompt = `${selectedStyle.systemPrompt}
 
-${customPrompt ? `YÊU CẦU BỔ SUNG: ${customPrompt}` : ''}
+# LANGUAGE SETTING
+${langInstruction}
 
-Viết một câu chuyện hoàn chỉnh dựa trên:
-- Tiêu đề: ${selectedIdea.title}
+${customPrompt ? `ADDITIONAL REQUIREMENTS: ${customPrompt}` : ''}
+
+Write a complete story based on:
+- Title: ${selectedIdea.title}
 - Hook: ${selectedIdea.hook}
-- Cốt truyện: ${selectedIdea.summary}
-- Mâu thuẫn: ${selectedIdea.conflict}
+- Plot: ${selectedIdea.summary}
+- Conflict: ${selectedIdea.conflict}
 - Tone: ${selectedIdea.tone}
-- Độ dài: ${lengthGuide[storyLength]}
+- Length: ${lengthGuide[storyLength]}
 
-Hãy viết câu chuyện chi tiết, hấp dẫn với mở bài, thân bài, kết bài rõ ràng.
-Sử dụng ngôn ngữ sinh động, mô tả chi tiết.
+Write a detailed, engaging story with clear beginning, middle, and end.
+Use vivid language and detailed descriptions.
+IMPORTANT: The entire story MUST be written in ${langLabel}.
 
 OUTPUT FORMAT:
-# [Tiêu đề truyện]
+# [Story Title]
 
-[Nội dung truyện...]`;
+[Story content...]`;
 
             const result = await generateContent(apiKey, prompt);
 
@@ -255,7 +272,7 @@ OUTPUT FORMAT:
         } finally {
             setIsGenerating(false);
         }
-    }, [selectedStyle, selectedIdea, storyLength, customPrompt, hasValidKey, getNextKey, handleKeyError]);
+    }, [selectedStyle, selectedIdea, storyLength, customPrompt, language, hasValidKey, getNextKey, handleKeyError]);
 
     return {
         // State

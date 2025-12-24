@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { StyleConfig, CharacterBible, PromptSnippet, Scene, PipelineStep, PipelineStatus, ScenePipelineJob } from '@/types/styles';
 import { getAllStyleConfigs } from '@/services/stylesService';
 import { useApiKey } from '@/contexts/ApiKeyContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getLanguageLabel } from '@/types/language';
 import { generateContent } from '@/lib/gemini';
 
 interface UseScenePipelineReturn {
@@ -29,6 +31,7 @@ interface UseScenePipelineReturn {
 
 export function useScenePipeline(): UseScenePipelineReturn {
     const { getNextKey, hasValidKey, handleKeyError } = useApiKey();
+    const { language } = useLanguage();
 
     // Core state
     const [styles, setStyles] = useState<StyleConfig[]>([]);
@@ -236,6 +239,12 @@ Generate the promptSnippet array for all characters.`;
                 if (!apiKey3) throw new Error('No API key available');
 
                 const scenePrompt = `${selectedStyle.sceneSystem}
+
+# LANGUAGE RULES FOR OUTPUT
+- **imagePrompt**: MUST be in English (for AI image generation)
+- **videoPrompt**: MUST be in English (for AI video generation)  
+- **voiceOver**: MUST be in ${getLanguageLabel(language)} (user's selected language)
+- All other fields: Keep as-is based on style template
 
 Character Snippets:
 ${JSON.stringify(characterSnippets, null, 2)}
