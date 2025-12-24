@@ -1,0 +1,16 @@
+{
+    "name": "viet50stylestruyentranh",
+    "version": 2,
+    "builds": [
+        {
+            "src": "unified-platform/package.json",
+            "use": "@vercel/next"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/(.*)",
+            "dest": "/unified-platform/$1"
+        }
+    ]
+}

@@ -93,33 +93,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Fetch user data from Firestore
     const fetchUserData = useCallback(async (firebaseUser: FirebaseUser): Promise<AppUser> => {
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
+        try {
+            const userRef = doc(db, 'users', firebaseUser.uid);
+            const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists()) {
-            const data = userSnap.data();
+            if (userSnap.exists()) {
+                const data = userSnap.data();
+                return {
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email || '',
+                    displayName: firebaseUser.displayName || data.displayName || null,
+                    photoURL: firebaseUser.photoURL || data.photoURL || null,
+                    role: data.role || 'free',
+                    emailVerified: firebaseUser.emailVerified,
+                    createdAt: data.createdAt?.toDate() || new Date(),
+                };
+            } else {
+                // New user - try to create document
+                const newUser: Omit<AppUser, 'createdAt'> & { createdAt: ReturnType<typeof serverTimestamp> } = {
+                    uid: firebaseUser.uid,
+                    email: firebaseUser.email || '',
+                    displayName: firebaseUser.displayName || null,
+                    photoURL: firebaseUser.photoURL || null,
+                    role: 'free',
+                    emailVerified: firebaseUser.emailVerified,
+                    createdAt: serverTimestamp(),
+                };
+
+                try {
+                    await setDoc(userRef, newUser);
+                } catch (writeError) {
+                    console.warn('Could not save user to Firestore (permissions may not be set):', writeError);
+                }
+
+                return { ...newUser, createdAt: new Date() } as AppUser;
+            }
+        } catch (firestoreError) {
+            // If Firestore fails (e.g., permissions not set), still return basic user info from Auth
+            console.warn('Firestore error, using Auth data only:', firestoreError);
             return {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email || '',
-                displayName: firebaseUser.displayName || data.displayName || null,
-                photoURL: firebaseUser.photoURL || data.photoURL || null,
-                role: data.role || 'free',
-                emailVerified: firebaseUser.emailVerified,
-                createdAt: data.createdAt?.toDate() || new Date(),
-            };
-        } else {
-            // New user - create document
-            const newUser: Omit<AppUser, 'createdAt'> & { createdAt: ReturnType<typeof serverTimestamp> } = {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email || '',
                 displayName: firebaseUser.displayName || null,
                 photoURL: firebaseUser.photoURL || null,
                 role: 'free',
                 emailVerified: firebaseUser.emailVerified,
-                createdAt: serverTimestamp(),
+                createdAt: new Date(),
             };
-            await setDoc(userRef, newUser);
-            return { ...newUser, createdAt: new Date() } as AppUser;
         }
     }, []);
 
