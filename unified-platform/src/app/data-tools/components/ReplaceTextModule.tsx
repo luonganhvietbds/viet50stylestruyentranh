@@ -1,10 +1,20 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FileText, Copy, Check, Download, RefreshCw, Layers, Type, Trash2 } from 'lucide-react';
 import { copyToClipboard, saveTextFile } from '../utils/helpers';
 
 type Mode = 'regex' | 'block';
+
+// Storage keys
+const STORAGE_KEYS = {
+    mode: 'data_tools_replacetext_mode',
+    inputText: 'data_tools_replacetext_input',
+    findText: 'data_tools_replacetext_find',
+    replaceText: 'data_tools_replacetext_replace',
+    isRegex: 'data_tools_replacetext_isregex',
+    lineToDelete: 'data_tools_replacetext_linetodelete',
+};
 
 export function ReplaceTextModule() {
     const [mode, setMode] = useState<Mode>('regex');
@@ -13,9 +23,42 @@ export function ReplaceTextModule() {
     const [replaceText, setReplaceText] = useState('');
     const [isRegex, setIsRegex] = useState(false);
     const [copied, setCopied] = useState(false);
-
-    // Block processor state
     const [lineToDelete, setLineToDelete] = useState<number>(1);
+
+    // Load from storage on mount
+    useEffect(() => {
+        try {
+            const savedMode = localStorage.getItem(STORAGE_KEYS.mode);
+            if (savedMode) setMode(savedMode as Mode);
+
+            const savedInput = localStorage.getItem(STORAGE_KEYS.inputText);
+            if (savedInput) setInputText(savedInput);
+
+            const savedFind = localStorage.getItem(STORAGE_KEYS.findText);
+            if (savedFind) setFindText(savedFind);
+
+            const savedReplace = localStorage.getItem(STORAGE_KEYS.replaceText);
+            if (savedReplace) setReplaceText(savedReplace);
+
+            const savedIsRegex = localStorage.getItem(STORAGE_KEYS.isRegex);
+            if (savedIsRegex) setIsRegex(savedIsRegex === 'true');
+
+            const savedLine = localStorage.getItem(STORAGE_KEYS.lineToDelete);
+            if (savedLine) setLineToDelete(parseInt(savedLine) || 1);
+        } catch { /* ignore */ }
+    }, []);
+
+    // Save to storage on change
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.mode, mode);
+            localStorage.setItem(STORAGE_KEYS.inputText, inputText);
+            localStorage.setItem(STORAGE_KEYS.findText, findText);
+            localStorage.setItem(STORAGE_KEYS.replaceText, replaceText);
+            localStorage.setItem(STORAGE_KEYS.isRegex, String(isRegex));
+            localStorage.setItem(STORAGE_KEYS.lineToDelete, String(lineToDelete));
+        } catch { /* ignore */ }
+    }, [mode, inputText, findText, replaceText, isRegex, lineToDelete]);
 
     // Parse blocks (split by empty lines)
     const blocks = useMemo(() => {
@@ -99,8 +142,8 @@ export function ReplaceTextModule() {
                     <button
                         onClick={() => setMode('regex')}
                         className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors ${mode === 'regex'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         <Type className="w-4 h-4" />
@@ -109,8 +152,8 @@ export function ReplaceTextModule() {
                     <button
                         onClick={() => setMode('block')}
                         className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors ${mode === 'block'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         <Layers className="w-4 h-4" />

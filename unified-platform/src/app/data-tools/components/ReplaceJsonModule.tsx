@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Replace, Plus, Trash2, Eye, EyeOff, Check, Download, Copy, ChevronUp, ChevronDown, ToggleLeft, ToggleRight } from 'lucide-react';
 import { DataToolsHook } from '../hooks/useDataTools';
 import { copyToClipboard, saveTextFile, applyReplacementRules, getValueByPath } from '../utils/helpers';
@@ -12,6 +12,13 @@ interface ReplaceJsonModuleProps {
 
 // Generate unique ID
 const genId = () => Math.random().toString(36).substring(2, 9);
+
+// Storage keys
+const STORAGE_KEYS = {
+    selectedKeys: 'data_tools_replacejson_selectedkeys',
+    rules: 'data_tools_replacejson_rules',
+    showPreview: 'data_tools_replacejson_preview',
+};
 
 export function ReplaceJsonModule({ hook }: ReplaceJsonModuleProps) {
     // Selected keys (multi-select with pill buttons)
@@ -25,6 +32,29 @@ export function ReplaceJsonModule({ hook }: ReplaceJsonModuleProps) {
     const [copied, setCopied] = useState(false);
 
     const { sceneData, availableKeys, dataAnalysis } = hook;
+
+    // Load from storage on mount
+    useEffect(() => {
+        try {
+            const savedKeys = localStorage.getItem(STORAGE_KEYS.selectedKeys);
+            if (savedKeys) setSelectedKeys(new Set(JSON.parse(savedKeys)));
+
+            const savedRules = localStorage.getItem(STORAGE_KEYS.rules);
+            if (savedRules) setRules(JSON.parse(savedRules));
+
+            const savedPreview = localStorage.getItem(STORAGE_KEYS.showPreview);
+            if (savedPreview) setShowPreview(savedPreview === 'true');
+        } catch { /* ignore */ }
+    }, []);
+
+    // Save to storage on change
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.selectedKeys, JSON.stringify(Array.from(selectedKeys)));
+            localStorage.setItem(STORAGE_KEYS.rules, JSON.stringify(rules));
+            localStorage.setItem(STORAGE_KEYS.showPreview, String(showPreview));
+        } catch { /* ignore */ }
+    }, [selectedKeys, rules, showPreview]);
 
     // Toggle key selection
     const toggleKey = useCallback((key: string) => {
@@ -189,8 +219,8 @@ export function ReplaceJsonModule({ hook }: ReplaceJsonModuleProps) {
                                 key={field.path}
                                 onClick={() => toggleKey(field.path)}
                                 className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-all ${selectedKeys.has(field.path)
-                                        ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
-                                        : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                                    ? 'bg-blue-500 text-white border-blue-500 shadow-sm'
+                                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
                                     }`}
                             >
                                 {field.key}
@@ -223,8 +253,8 @@ export function ReplaceJsonModule({ hook }: ReplaceJsonModuleProps) {
                                 <div
                                     key={rule.id}
                                     className={`p-4 rounded-lg border transition-all ${rule.enabled
-                                            ? 'bg-white border-gray-200'
-                                            : 'bg-gray-50 border-gray-200 opacity-60'
+                                        ? 'bg-white border-gray-200'
+                                        : 'bg-gray-50 border-gray-200 opacity-60'
                                         }`}
                                 >
                                     <div className="flex items-center gap-3 mb-3">

@@ -11,6 +11,13 @@ interface GeminiModuleProps {
     hook: DataToolsHook;
 }
 
+// Storage keys
+const STORAGE_KEYS = {
+    systemPrompt: 'data_tools_gemini_system',
+    userPrompt: 'data_tools_gemini_user',
+    response: 'data_tools_gemini_response',
+};
+
 export function GeminiModule({ hook }: GeminiModuleProps) {
     const { getNextKey, markKeyInvalid, hasValidKey } = useApiKey();
 
@@ -20,6 +27,29 @@ export function GeminiModule({ hook }: GeminiModuleProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
+
+    // Load from storage on mount
+    useEffect(() => {
+        try {
+            const savedSystem = localStorage.getItem(STORAGE_KEYS.systemPrompt);
+            if (savedSystem) setSystemPrompt(savedSystem);
+
+            const savedUser = localStorage.getItem(STORAGE_KEYS.userPrompt);
+            if (savedUser) setUserPrompt(savedUser);
+
+            const savedResponse = localStorage.getItem(STORAGE_KEYS.response);
+            if (savedResponse) setResponse(savedResponse);
+        } catch { /* ignore */ }
+    }, []);
+
+    // Save to storage on change
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.systemPrompt, systemPrompt);
+            localStorage.setItem(STORAGE_KEYS.userPrompt, userPrompt);
+            localStorage.setItem(STORAGE_KEYS.response, response);
+        } catch { /* ignore */ }
+    }, [systemPrompt, userPrompt, response]);
 
     // Auto-fill context from ExtractModule
     useEffect(() => {
@@ -167,8 +197,8 @@ export function GeminiModule({ hook }: GeminiModuleProps) {
                             <button
                                 onClick={handleCopy}
                                 className={`px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 transition-colors ${copied
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                     }`}
                             >
                                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}

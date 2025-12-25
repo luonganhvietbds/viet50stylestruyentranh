@@ -1,11 +1,19 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FileCode, Copy, Check, Download, RefreshCw, Quote, AlignLeft, Hash, Info } from 'lucide-react';
 import { copyToClipboard, saveTextFile } from '../utils/helpers';
 
 type ExtractionMode = 'quotes' | 'lines';
 type SpacingMode = 'single' | 'double';
+
+// Storage keys
+const STORAGE_KEYS = {
+    input: 'data_tools_promptformat_input',
+    mode: 'data_tools_promptformat_mode',
+    numbering: 'data_tools_promptformat_numbering',
+    spacing: 'data_tools_promptformat_spacing',
+};
 
 export function PromptFormatModule() {
     const [inputPrompt, setInputPrompt] = useState('');
@@ -13,6 +21,33 @@ export function PromptFormatModule() {
     const [addNumbering, setAddNumbering] = useState(true);
     const [spacing, setSpacing] = useState<SpacingMode>('double');
     const [copied, setCopied] = useState(false);
+
+    // Load from storage on mount
+    useEffect(() => {
+        try {
+            const savedInput = localStorage.getItem(STORAGE_KEYS.input);
+            if (savedInput) setInputPrompt(savedInput);
+
+            const savedMode = localStorage.getItem(STORAGE_KEYS.mode);
+            if (savedMode) setMode(savedMode as ExtractionMode);
+
+            const savedNumbering = localStorage.getItem(STORAGE_KEYS.numbering);
+            if (savedNumbering) setAddNumbering(savedNumbering === 'true');
+
+            const savedSpacing = localStorage.getItem(STORAGE_KEYS.spacing);
+            if (savedSpacing) setSpacing(savedSpacing as SpacingMode);
+        } catch { /* ignore */ }
+    }, []);
+
+    // Save to storage on change
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.input, inputPrompt);
+            localStorage.setItem(STORAGE_KEYS.mode, mode);
+            localStorage.setItem(STORAGE_KEYS.numbering, String(addNumbering));
+            localStorage.setItem(STORAGE_KEYS.spacing, spacing);
+        } catch { /* ignore */ }
+    }, [inputPrompt, mode, addNumbering, spacing]);
 
     // Extract prompts based on mode
     const extractedPrompts = useMemo(() => {
@@ -93,8 +128,8 @@ export function PromptFormatModule() {
                     <button
                         onClick={() => setMode('quotes')}
                         className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors ${mode === 'quotes'
-                                ? 'bg-indigo-100 text-indigo-700'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         <Quote className="w-4 h-4" />
@@ -103,8 +138,8 @@ export function PromptFormatModule() {
                     <button
                         onClick={() => setMode('lines')}
                         className={`px-4 py-2 text-sm font-medium rounded-lg flex items-center gap-2 transition-colors ${mode === 'lines'
-                                ? 'bg-indigo-100 text-indigo-700'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-indigo-100 text-indigo-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         <AlignLeft className="w-4 h-4" />
