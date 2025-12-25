@@ -10,6 +10,19 @@ import { generateWithModelFallback } from '@/lib/gemini';
 
 export type StoryStep = 1 | 2 | 3 | 4 | 5;
 
+// Storage keys for Story Flow persistence
+const STORAGE_KEYS = {
+    currentStep: 'story_flow_step',
+    selectedStyleId: 'story_flow_style_id',
+    userInput: 'story_flow_input',
+    numIdeas: 'story_flow_num_ideas',
+    ideas: 'story_flow_ideas',
+    selectedIdea: 'story_flow_selected_idea',
+    storyLength: 'story_flow_length',
+    customPrompt: 'story_flow_custom_prompt',
+    generatedStory: 'story_flow_generated_story',
+};
+
 interface UseStoryFlowReturn {
     // State
     currentStep: StoryStep;
@@ -58,6 +71,52 @@ export function useStoryFlow(): UseStoryFlowReturn {
     const [generatedStory, setGeneratedStory] = useState<GeneratedStory | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load from localStorage on mount
+    useEffect(() => {
+        try {
+            const savedStep = localStorage.getItem(STORAGE_KEYS.currentStep);
+            if (savedStep) setCurrentStep(Number(savedStep) as StoryStep);
+
+            const savedInput = localStorage.getItem(STORAGE_KEYS.userInput);
+            if (savedInput) setUserInput(savedInput);
+
+            const savedNumIdeas = localStorage.getItem(STORAGE_KEYS.numIdeas);
+            if (savedNumIdeas) setNumIdeas(Number(savedNumIdeas));
+
+            const savedIdeas = localStorage.getItem(STORAGE_KEYS.ideas);
+            if (savedIdeas) setIdeas(JSON.parse(savedIdeas));
+
+            const savedSelectedIdea = localStorage.getItem(STORAGE_KEYS.selectedIdea);
+            if (savedSelectedIdea) setSelectedIdea(JSON.parse(savedSelectedIdea));
+
+            const savedLength = localStorage.getItem(STORAGE_KEYS.storyLength);
+            if (savedLength) setStoryLength(savedLength as StoryLength);
+
+            const savedCustomPrompt = localStorage.getItem(STORAGE_KEYS.customPrompt);
+            if (savedCustomPrompt) setCustomPrompt(savedCustomPrompt);
+
+            const savedStory = localStorage.getItem(STORAGE_KEYS.generatedStory);
+            if (savedStory) setGeneratedStory(JSON.parse(savedStory));
+        } catch { /* ignore */ }
+        setIsLoaded(true);
+    }, []);
+
+    // Save to localStorage on change
+    useEffect(() => {
+        if (!isLoaded) return;
+        try {
+            localStorage.setItem(STORAGE_KEYS.currentStep, String(currentStep));
+            localStorage.setItem(STORAGE_KEYS.userInput, userInput);
+            localStorage.setItem(STORAGE_KEYS.numIdeas, String(numIdeas));
+            localStorage.setItem(STORAGE_KEYS.ideas, JSON.stringify(ideas));
+            if (selectedIdea) localStorage.setItem(STORAGE_KEYS.selectedIdea, JSON.stringify(selectedIdea));
+            localStorage.setItem(STORAGE_KEYS.storyLength, storyLength);
+            localStorage.setItem(STORAGE_KEYS.customPrompt, customPrompt);
+            if (generatedStory) localStorage.setItem(STORAGE_KEYS.generatedStory, JSON.stringify(generatedStory));
+        } catch { /* ignore */ }
+    }, [isLoaded, currentStep, userInput, numIdeas, ideas, selectedIdea, storyLength, customPrompt, generatedStory]);
 
     // Fetch styles from Firestore
     useEffect(() => {
@@ -66,6 +125,13 @@ export function useStoryFlow(): UseStoryFlowReturn {
             try {
                 const fetchedStyles = await getAllStyleAgents();
                 setStyles(fetchedStyles);
+
+                // Restore selected style from localStorage
+                const savedStyleId = localStorage.getItem(STORAGE_KEYS.selectedStyleId);
+                if (savedStyleId) {
+                    const style = fetchedStyles.find(s => s.id === savedStyleId);
+                    if (style) setSelectedStyle(style);
+                }
             } catch (err) {
                 console.error('Error fetching styles:', err);
                 setError('Không thể tải danh sách styles');

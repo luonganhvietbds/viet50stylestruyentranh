@@ -33,6 +33,15 @@ export function useScenePipeline(): UseScenePipelineReturn {
     const { getNextKey, hasValidKey, handleKeyError, markKeyInvalid } = useApiKey();
     const { language } = useLanguage();
 
+    // Storage keys for Scene Pipeline persistence
+    const STORAGE_KEYS = {
+        selectedStyleId: 'scene_pipeline_style_id',
+        voiceInput: 'scene_pipeline_voice_input',
+        useThinkingModel: 'scene_pipeline_thinking',
+        currentJob: 'scene_pipeline_current_job',
+        jobHistory: 'scene_pipeline_history',
+    };
+
     // Core state
     const [styles, setStyles] = useState<StyleConfig[]>([]);
     const [loadingStyles, setLoadingStyles] = useState(true);
@@ -42,6 +51,37 @@ export function useScenePipeline(): UseScenePipelineReturn {
     const [currentJob, setCurrentJob] = useState<ScenePipelineJob | null>(null);
     const [jobHistory, setJobHistory] = useState<ScenePipelineJob[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load from localStorage on mount
+    useEffect(() => {
+        try {
+            const savedInput = localStorage.getItem(STORAGE_KEYS.voiceInput);
+            if (savedInput) setVoiceInput(savedInput);
+
+            const savedThinking = localStorage.getItem(STORAGE_KEYS.useThinkingModel);
+            if (savedThinking) setUseThinkingModel(savedThinking === 'true');
+
+            const savedJob = localStorage.getItem(STORAGE_KEYS.currentJob);
+            if (savedJob) setCurrentJob(JSON.parse(savedJob));
+
+            const savedHistory = localStorage.getItem(STORAGE_KEYS.jobHistory);
+            if (savedHistory) setJobHistory(JSON.parse(savedHistory));
+        } catch { /* ignore */ }
+        setIsLoaded(true);
+    }, []);
+
+    // Save to localStorage on change
+    useEffect(() => {
+        if (!isLoaded) return;
+        try {
+            localStorage.setItem(STORAGE_KEYS.voiceInput, voiceInput);
+            localStorage.setItem(STORAGE_KEYS.useThinkingModel, String(useThinkingModel));
+            if (currentJob) localStorage.setItem(STORAGE_KEYS.currentJob, JSON.stringify(currentJob));
+            localStorage.setItem(STORAGE_KEYS.jobHistory, JSON.stringify(jobHistory));
+            if (selectedStyle) localStorage.setItem(STORAGE_KEYS.selectedStyleId, selectedStyle.id);
+        } catch { /* ignore */ }
+    }, [isLoaded, voiceInput, useThinkingModel, currentJob, jobHistory, selectedStyle]);
 
     // Fetch styles from Firestore
     useEffect(() => {
@@ -50,6 +90,17 @@ export function useScenePipeline(): UseScenePipelineReturn {
             try {
                 const fetchedStyles = await getAllStyleConfigs();
                 setStyles(fetchedStyles);
+
+                // Restore selected style from localStorage
+                const savedStyleId = localStorage.getItem(STORAGE_KEYS.selectedStyleId);
+                if (savedStyleId) {
+                    const style = fetchedStyles.find(s => s.id === savedStyleId);
+                    if (style) {
+                        setSelectedStyle(style);
+                        return;
+                    }
+                }
+                // Default to first style
                 if (fetchedStyles.length > 0) {
                     setSelectedStyle(fetchedStyles[0]);
                 }
@@ -81,6 +132,7 @@ export function useScenePipeline(): UseScenePipelineReturn {
     // Clear history
     const clearHistory = useCallback(() => {
         setJobHistory([]);
+        try { localStorage.removeItem(STORAGE_KEYS.jobHistory); } catch { /* ignore */ }
     }, []);
 
     // Reset current job
@@ -88,6 +140,11 @@ export function useScenePipeline(): UseScenePipelineReturn {
         setCurrentJob(null);
         setVoiceInput('');
         setError(null);
+        // Clear localStorage
+        try {
+            localStorage.removeItem(STORAGE_KEYS.currentJob);
+            localStorage.removeItem(STORAGE_KEYS.voiceInput);
+        } catch { /* ignore */ }
     }, []);
 
     // Add log to current job
