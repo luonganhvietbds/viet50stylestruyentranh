@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Upload, FileJson, AlertTriangle, Trash2, Plus, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, FileJson, AlertTriangle, Trash2, Plus, RefreshCw, CheckCircle } from 'lucide-react';
 import { DataToolsHook } from '../hooks/useDataTools';
-import { safeJsonParse } from '../utils/helpers';
+import { safeParseMultiArrayV2 } from '../utils/helpers';
 import { Scene } from '../types';
 
 interface ImportModuleProps {
@@ -11,51 +11,52 @@ interface ImportModuleProps {
     onNext: () => void;
 }
 
+// Draft persistence key
+const DRAFT_KEY = 'data_tools_import_draft';
+
 export function ImportModule({ hook, onNext }: ImportModuleProps) {
     const [inputData, setInputData] = useState('');
     const [importMode, setImportMode] = useState<'append' | 'replace'>('append');
     const [error, setError] = useState<string | null>(null);
+    const [parseInfo, setParseInfo] = useState<string | null>(null);
+
+    // Load draft on mount
+    useEffect(() => {
+        try {
+            const draft = localStorage.getItem(DRAFT_KEY);
+            if (draft) setInputData(draft);
+        } catch { /* ignore */ }
+    }, []);
+
+    // Save draft on change
+    useEffect(() => {
+        try {
+            if (inputData) {
+                localStorage.setItem(DRAFT_KEY, inputData);
+            } else {
+                localStorage.removeItem(DRAFT_KEY);
+            }
+        } catch { /* ignore */ }
+    }, [inputData]);
 
     const handleImport = () => {
         setError(null);
+        setParseInfo(null);
 
         if (!inputData.trim()) {
             setError('Vui lòng nhập dữ liệu JSON');
             return;
         }
 
-        const parsed = safeJsonParse<Scene[] | Scene>(inputData.trim());
-
-        if (!parsed) {
-            setError('JSON không hợp lệ. Vui lòng kiểm tra lại định dạng.');
-            return;
-        }
-
-        // Handle array or single object, also handle { segments: [...] } structure
-        let dataArray: Scene[];
-
-        if (Array.isArray(parsed)) {
-            dataArray = parsed;
-        } else if (typeof parsed === 'object' && parsed !== null) {
-            // Check for segments, data, items keys
-            const obj = parsed as Record<string, unknown>;
-            if (Array.isArray(obj.segments)) {
-                dataArray = obj.segments as Scene[];
-            } else if (Array.isArray(obj.data)) {
-                dataArray = obj.data as Scene[];
-            } else if (Array.isArray(obj.items)) {
-                dataArray = obj.items as Scene[];
-            } else {
-                dataArray = [parsed as Scene];
-            }
-        } else {
-            dataArray = [parsed as Scene];
-        }
+        // Use braceStack parser for multi-array support
+        const dataArray = safeParseMultiArrayV2(inputData.trim()) as Scene[];
 
         if (dataArray.length === 0) {
-            setError('Không tìm thấy dữ liệu hợp lệ.');
+            setError('Không tìm thấy dữ liệu JSON hợp lệ. Kiểm tra lại định dạng.');
             return;
         }
+
+        setParseInfo(`Tìm thấy ${dataArray.length} objects`);
 
         if (importMode === 'replace') {
             hook.replaceData(dataArray);
@@ -64,6 +65,7 @@ export function ImportModule({ hook, onNext }: ImportModuleProps) {
         }
 
         setInputData('');
+        localStorage.removeItem(DRAFT_KEY);
         onNext();
     };
 

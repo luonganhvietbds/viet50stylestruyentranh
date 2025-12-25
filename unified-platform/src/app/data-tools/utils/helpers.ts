@@ -108,6 +108,204 @@ export const safeJsonParse = <T = unknown>(str: string): T | null => {
 };
 
 // ==========================================
+// Multi-Array Parser (Brace Stacking Algorithm)
+// ==========================================
+
+import { ReplaceRule } from '../types';
+
+/**
+ * Parse multiple JSON arrays from "dirty" text using brace stacking
+ * This handles cases where JSON arrays are scattered in log files or mixed text
+ */
+export const safeParseMultiArrayV2 = (input: string): Record<string, unknown>[] => {
+    const results: Record<string, unknown>[] = [];
+    const cleaned = cleanJsonString(input);
+
+    let i = 0;
+    while (i < cleaned.length) {
+        // Find start of array
+        if (cleaned[i] === '[') {
+            let braceCount = 1;
+            let startIndex = i;
+            let inString = false;
+            let escapeNext = false;
+
+            i++;
+
+            // Find matching closing bracket
+            while (i < cleaned.length && braceCount > 0) {
+                const char = cleaned[i];
+
+                if (escapeNext) {
+                    escapeNext = false;
+                    i++;
+                    continue;
+                }
+
+                if (char === '\\' && inString) {
+                    escapeNext = true;
+                    i++;
+                    continue;
+                }
+
+                if (char === '"' && !escapeNext) {
+                    inString = !inString;
+                }
+
+                if (!inString) {
+                    if (char === '[') braceCount++;
+                    if (char === ']') braceCount--;
+                }
+
+                i++;
+            }
+
+            if (braceCount === 0) {
+                // Found a complete array
+                const arrayStr = cleaned.substring(startIndex, i);
+                try {
+                    const parsed = JSON.parse(arrayStr);
+                    if (Array.isArray(parsed)) {
+                        // Flatten: if array contains objects, add them
+                        parsed.forEach(item => {
+                            if (typeof item === 'object' && item !== null) {
+                                results.push(item as Record<string, unknown>);
+                            }
+                        });
+                    }
+                } catch {
+                    // Skip invalid JSON
+                }
+            }
+        } else if (cleaned[i] === '{') {
+            // Also try to parse single objects
+            let braceCount = 1;
+            let startIndex = i;
+            let inString = false;
+            let escapeNext = false;
+
+            i++;
+
+            while (i < cleaned.length && braceCount > 0) {
+                const char = cleaned[i];
+
+                if (escapeNext) {
+                    escapeNext = false;
+                    i++;
+                    continue;
+                }
+
+                if (char === '\\' && inString) {
+                    escapeNext = true;
+                    i++;
+                    continue;
+                }
+
+                if (char === '"' && !escapeNext) {
+                    inString = !inString;
+                }
+
+                if (!inString) {
+                    if (char === '{') braceCount++;
+                    if (char === '}') braceCount--;
+                }
+
+                i++;
+            }
+
+            if (braceCount === 0) {
+                const objStr = cleaned.substring(startIndex, i);
+                try {
+                    const parsed = JSON.parse(objStr);
+                    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                        // Check if it has data/segments/items array inside
+                        const obj = parsed as Record<string, unknown>;
+                        if (Array.isArray(obj.segments)) {
+                            (obj.segments as Record<string, unknown>[]).forEach(item => results.push(item));
+                        } else if (Array.isArray(obj.data)) {
+                            (obj.data as Record<string, unknown>[]).forEach(item => results.push(item));
+                        } else if (Array.isArray(obj.items)) {
+                            (obj.items as Record<string, unknown>[]).forEach(item => results.push(item));
+                        } else {
+                            results.push(obj);
+                        }
+                    }
+                } catch {
+                    // Skip
+                }
+            }
+        } else {
+            i++;
+        }
+    }
+
+    return results;
+};
+
+// ==========================================
+// Replacement Rules Pipeline
+// ==========================================
+
+/**
+ * Apply a single replacement rule to text
+ */
+export const applyRule = (text: string, rule: ReplaceRule): string => {
+    if (!rule.enabled || !rule.find) return text;
+
+    try {
+        if (rule.isRegex) {
+            const regex = new RegExp(rule.find, 'g');
+            return text.replace(regex, rule.replace);
+        } else {
+            // Literal replacement - escape special regex chars
+            const escaped = rule.find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(escaped, 'g');
+            return text.replace(regex, rule.replace);
+        }
+    } catch {
+        return text; // Return original on error
+    }
+};
+
+/**
+ * Apply all replacement rules in pipeline order
+ */
+export const applyReplacementRules = (text: string, rules: ReplaceRule[]): string => {
+    return rules.reduce((result, rule) => applyRule(result, rule), text);
+};
+
+/**
+ * Apply rules with case-sensitive and whole-word options
+ */
+export const applyRuleAdvanced = (
+    text: string,
+    find: string,
+    replace: string,
+    options: { isRegex: boolean; caseSensitive: boolean; wholeWord: boolean }
+): string => {
+    if (!find) return text;
+
+    try {
+        let pattern = find;
+
+        if (!options.isRegex) {
+            // Escape special regex chars for literal search
+            pattern = find.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        if (options.wholeWord) {
+            pattern = `\\b${pattern}\\b`;
+        }
+
+        const flags = options.caseSensitive ? 'g' : 'gi';
+        const regex = new RegExp(pattern, flags);
+        return text.replace(regex, replace);
+    } catch {
+        return text;
+    }
+};
+
+// ==========================================
 // Enhanced Data Analysis Functions
 // ==========================================
 
