@@ -335,7 +335,7 @@ export function ReplaceJsonModule({ hook }: ReplaceJsonModuleProps) {
                         <h3 className="text-sm font-semibold text-gray-700">Kết quả thay thế</h3>
                         {resultContent && (
                             <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                                {resultContent.split('\n').filter((line: string) => line.trim()).length} dòng
+                                {resultContent.split(/\n\s*\n/).filter((block: string) => block.trim()).length} khối
                             </span>
                         )}
                         {selectedKeys.size > 0 && (

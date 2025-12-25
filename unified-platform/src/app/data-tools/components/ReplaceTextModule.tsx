@@ -257,7 +257,7 @@ export function ReplaceTextModule() {
                             Kết quả
                             {outputText && (
                                 <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
-                                    {outputText.split('\n').filter(line => line.trim()).length} dòng
+                                    {outputText.split(/\n\s*\n/).filter(block => block.trim()).length} khối
                                 </span>
                             )}
                         </label>
