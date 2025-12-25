@@ -1,29 +1,34 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { FileText, Copy, Check, Download, RefreshCw, Layers, Type, Trash2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { FileText, Copy, Check, Download, RefreshCw, Layers, Type, Trash2, Plus, ChevronUp, ChevronDown } from 'lucide-react';
 import { copyToClipboard, saveTextFile } from '../utils/helpers';
 
 type Mode = 'regex' | 'block';
+
+interface ReplacementRule {
+    id: string;
+    find: string;
+    replace: string;
+    isRegex: boolean;
+    enabled: boolean;
+}
 
 // Storage keys
 const STORAGE_KEYS = {
     mode: 'data_tools_replacetext_mode',
     inputText: 'data_tools_replacetext_input',
-    findText: 'data_tools_replacetext_find',
-    replaceText: 'data_tools_replacetext_replace',
-    isRegex: 'data_tools_replacetext_isregex',
+    rules: 'data_tools_replacetext_rules',
     lineToDelete: 'data_tools_replacetext_linetodelete',
 };
 
 export function ReplaceTextModule() {
     const [mode, setMode] = useState<Mode>('regex');
     const [inputText, setInputText] = useState('');
-    const [findText, setFindText] = useState('');
-    const [replaceText, setReplaceText] = useState('');
-    const [isRegex, setIsRegex] = useState(false);
+    const [rules, setRules] = useState<ReplacementRule[]>([]);
     const [copied, setCopied] = useState(false);
     const [lineToDelete, setLineToDelete] = useState<number>(1);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // Load from storage on mount
     useEffect(() => {
@@ -34,31 +39,25 @@ export function ReplaceTextModule() {
             const savedInput = localStorage.getItem(STORAGE_KEYS.inputText);
             if (savedInput) setInputText(savedInput);
 
-            const savedFind = localStorage.getItem(STORAGE_KEYS.findText);
-            if (savedFind) setFindText(savedFind);
-
-            const savedReplace = localStorage.getItem(STORAGE_KEYS.replaceText);
-            if (savedReplace) setReplaceText(savedReplace);
-
-            const savedIsRegex = localStorage.getItem(STORAGE_KEYS.isRegex);
-            if (savedIsRegex) setIsRegex(savedIsRegex === 'true');
+            const savedRules = localStorage.getItem(STORAGE_KEYS.rules);
+            if (savedRules) setRules(JSON.parse(savedRules));
 
             const savedLine = localStorage.getItem(STORAGE_KEYS.lineToDelete);
             if (savedLine) setLineToDelete(parseInt(savedLine) || 1);
         } catch { /* ignore */ }
+        setIsLoaded(true);
     }, []);
 
     // Save to storage on change
     useEffect(() => {
+        if (!isLoaded) return;
         try {
             localStorage.setItem(STORAGE_KEYS.mode, mode);
             localStorage.setItem(STORAGE_KEYS.inputText, inputText);
-            localStorage.setItem(STORAGE_KEYS.findText, findText);
-            localStorage.setItem(STORAGE_KEYS.replaceText, replaceText);
-            localStorage.setItem(STORAGE_KEYS.isRegex, String(isRegex));
+            localStorage.setItem(STORAGE_KEYS.rules, JSON.stringify(rules));
             localStorage.setItem(STORAGE_KEYS.lineToDelete, String(lineToDelete));
         } catch { /* ignore */ }
-    }, [mode, inputText, findText, replaceText, isRegex, lineToDelete]);
+    }, [isLoaded, mode, inputText, rules, lineToDelete]);
 
     // Parse blocks (split by empty lines)
     const blocks = useMemo(() => {
@@ -66,21 +65,28 @@ export function ReplaceTextModule() {
         return inputText.split(/\n\s*\n/).filter(b => b.trim());
     }, [inputText]);
 
+    // Apply rules sequentially
+    const applyRules = useCallback((text: string): string => {
+        let result = text;
+        for (const rule of rules) {
+            if (!rule.enabled || !rule.find) continue;
+            try {
+                if (rule.isRegex) {
+                    const regex = new RegExp(rule.find, 'g');
+                    result = result.replace(regex, rule.replace);
+                } else {
+                    result = result.split(rule.find).join(rule.replace);
+                }
+            } catch { /* ignore invalid regex */ }
+        }
+        return result;
+    }, [rules]);
+
     // Regex mode output
     const regexOutput = useMemo(() => {
-        if (!inputText || !findText) return inputText;
-
-        try {
-            if (isRegex) {
-                const regex = new RegExp(findText, 'g');
-                return inputText.replace(regex, replaceText);
-            } else {
-                return inputText.split(findText).join(replaceText);
-            }
-        } catch {
-            return inputText;
-        }
-    }, [inputText, findText, replaceText, isRegex]);
+        if (!inputText) return inputText;
+        return applyRules(inputText);
+    }, [inputText, applyRules]);
 
     // Block processor output - delete line N from all blocks
     const blockOutput = useMemo(() => {
@@ -100,6 +106,37 @@ export function ReplaceTextModule() {
     // Final output based on mode
     const outputText = mode === 'regex' ? regexOutput : blockOutput;
 
+    // Rule management functions
+    const addRule = () => {
+        setRules(prev => [...prev, {
+            id: Date.now().toString(),
+            find: '',
+            replace: '',
+            isRegex: false,
+            enabled: true
+        }]);
+    };
+
+    const updateRule = (id: string, updates: Partial<ReplacementRule>) => {
+        setRules(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
+    };
+
+    const deleteRule = (id: string) => {
+        setRules(prev => prev.filter(r => r.id !== id));
+    };
+
+    const moveRule = (id: string, direction: 'up' | 'down') => {
+        setRules(prev => {
+            const idx = prev.findIndex(r => r.id === id);
+            if (idx < 0) return prev;
+            const newIdx = direction === 'up' ? idx - 1 : idx + 1;
+            if (newIdx < 0 || newIdx >= prev.length) return prev;
+            const newRules = [...prev];
+            [newRules[idx], newRules[newIdx]] = [newRules[newIdx], newRules[idx]];
+            return newRules;
+        });
+    };
+
     const handleCopy = async () => {
         await copyToClipboard(outputText);
         setCopied(true);
@@ -112,8 +149,7 @@ export function ReplaceTextModule() {
 
     const handleClear = () => {
         setInputText('');
-        setFindText('');
-        setReplaceText('');
+        setRules([]);
     };
 
     // Get max lines in any block
@@ -164,58 +200,110 @@ export function ReplaceTextModule() {
 
             {/* Controls based on mode */}
             {mode === 'regex' ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tìm</label>
-                        <input
-                            type="text"
-                            value={findText}
-                            onChange={(e) => setFindText(e.target.value)}
-                            placeholder="Văn bản cần tìm"
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-800"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Thay bằng</label>
-                        <input
-                            type="text"
-                            value={replaceText}
-                            onChange={(e) => setReplaceText(e.target.value)}
-                            placeholder="Văn bản thay thế"
-                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-800"
-                        />
-                    </div>
-                    <div className="flex items-end gap-2">
-                        <label className="flex items-center gap-2 cursor-pointer py-2.5">
-                            <input
-                                type="checkbox"
-                                checked={isRegex}
-                                onChange={(e) => setIsRegex(e.target.checked)}
-                                className="text-green-600 rounded"
-                            />
-                            <span className="text-sm text-gray-700">Regex</span>
-                        </label>
+                <div className="mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-sm font-semibold text-gray-700">Quy tắc thay thế</h3>
                         <button
-                            onClick={handleClear}
-                            className="px-4 py-2.5 border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                            onClick={addRule}
+                            className="px-3 py-1.5 text-sm font-medium text-green-600 bg-green-50 rounded-lg hover:bg-green-100 flex items-center gap-1.5 transition-colors"
                         >
-                            <RefreshCw className="w-4 h-4" />
+                            <Plus className="w-4 h-4" />
+                            Thêm quy tắc
                         </button>
                     </div>
+
+                    {rules.length === 0 ? (
+                        <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                            <p className="text-sm">Chưa có quy tắc nào</p>
+                            <p className="text-xs mt-1">Bấm "Thêm quy tắc" để bắt đầu</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                            {rules.map((rule, idx) => (
+                                <div
+                                    key={rule.id}
+                                    className={`p-4 rounded-lg border transition-all ${rule.enabled
+                                        ? 'bg-white border-gray-200'
+                                        : 'bg-gray-50 border-gray-200 opacity-60'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <span className="text-xs font-medium text-gray-400 w-6">#{idx + 1}</span>
+                                        <div className="flex-1 grid grid-cols-2 gap-3">
+                                            <input
+                                                type="text"
+                                                value={rule.find}
+                                                onChange={e => updateRule(rule.id, { find: e.target.value })}
+                                                placeholder="Tìm..."
+                                                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-800"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={rule.replace}
+                                                onChange={e => updateRule(rule.id, { replace: e.target.value })}
+                                                placeholder="Thay bằng..."
+                                                className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-800"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={rule.isRegex}
+                                                    onChange={e => updateRule(rule.id, { isRegex: e.target.checked })}
+                                                    className="text-green-600 rounded"
+                                                />
+                                                <span className="text-xs text-gray-600">Regex</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={rule.enabled}
+                                                    onChange={e => updateRule(rule.id, { enabled: e.target.checked })}
+                                                    className="text-green-600 rounded"
+                                                />
+                                                <span className="text-xs text-gray-600">Enabled</span>
+                                            </label>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => moveRule(rule.id, 'up')}
+                                                disabled={idx === 0}
+                                                className="p-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                                            >
+                                                <ChevronUp className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => moveRule(rule.id, 'down')}
+                                                disabled={idx === rules.length - 1}
+                                                className="p-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                                            >
+                                                <ChevronDown className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => deleteRule(rule.id)}
+                                                className="p-1.5 text-red-400 hover:text-red-600"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             ) : (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-sm text-green-800 mb-3">
-                        <strong>Block Processor:</strong> Chia văn bản thành các khối (theo dòng trống).
-                        Chọn số dòng để xóa khỏi TẤT CẢ các khối.
-                    </p>
-                    <div className="flex items-center gap-4">
+                <div className="mb-6">
+                    <div className="flex items-center gap-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
                         <div className="flex items-center gap-2">
-                            <label className="text-sm font-medium text-gray-700">Xóa dòng số:</label>
+                            <span className="text-sm font-medium text-gray-700">Xóa dòng số:</span>
                             <input
                                 type="number"
                                 min={1}
-                                max={maxLinesInBlock || 10}
+                                max={maxLinesInBlock || 100}
                                 value={lineToDelete}
                                 onChange={(e) => setLineToDelete(parseInt(e.target.value) || 1)}
                                 className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 text-gray-800 text-center"
@@ -235,7 +323,9 @@ export function ReplaceTextModule() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Văn bản gốc
                         {mode === 'block' && blocks.length > 0 && (
-                            <span className="ml-2 text-xs text-gray-400">({blocks.length} blocks)</span>
+                            <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded-full">
+                                {blocks.length} khối
+                            </span>
                         )}
                     </label>
                     <textarea
@@ -262,6 +352,12 @@ export function ReplaceTextModule() {
                             )}
                         </label>
                         <div className="flex gap-2">
+                            <button
+                                onClick={handleClear}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 rounded transition-colors"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                            </button>
                             <button
                                 onClick={handleCopy}
                                 disabled={!outputText}
