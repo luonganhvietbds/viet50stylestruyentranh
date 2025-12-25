@@ -94,26 +94,32 @@ export default function VoiceEditorPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                        <span className="text-sm font-bold text-gray-700">Cấu hình độ dài:</span>
+                    <div className="flex items-center gap-4 bg-green-50 p-3 rounded-lg border-2 border-green-200">
+                        <span className="text-sm font-bold text-green-700">🎯 Mục tiêu:</span>
                         <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500">Min:</label>
+                            <label className="text-xs font-medium text-gray-600">Min:</label>
                             <input
                                 type="number"
+                                min={1}
+                                max={100}
                                 value={minSyllables}
-                                onChange={(e) => setMinSyllables(Number(e.target.value))}
-                                className="w-16 p-1 text-sm border border-gray-300 rounded focus:ring-green-500"
+                                onChange={(e) => setMinSyllables(Number(e.target.value) || 1)}
+                                className="w-16 px-2 py-1.5 text-center text-sm font-bold text-green-700 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
                         </div>
+                        <span className="text-gray-400">–</span>
                         <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500">Max:</label>
+                            <label className="text-xs font-medium text-gray-600">Max:</label>
                             <input
                                 type="number"
+                                min={1}
+                                max={100}
                                 value={maxSyllables}
-                                onChange={(e) => setMaxSyllables(Number(e.target.value))}
-                                className="w-16 p-1 text-sm border border-gray-300 rounded focus:ring-green-500"
+                                onChange={(e) => setMaxSyllables(Number(e.target.value) || 1)}
+                                className="w-16 px-2 py-1.5 text-center text-sm font-bold text-green-700 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
                         </div>
+                        <span className="text-xs text-gray-500">âm tiết/words</span>
                     </div>
 
                     <button
