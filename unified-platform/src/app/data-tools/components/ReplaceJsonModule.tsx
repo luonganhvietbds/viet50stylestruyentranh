@@ -333,6 +333,11 @@ export function ReplaceJsonModule({ hook }: ReplaceJsonModuleProps) {
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                         <h3 className="text-sm font-semibold text-gray-700">Kết quả thay thế</h3>
+                        {resultContent && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
+                                {resultContent.split('\n').filter((line: string) => line.trim()).length} dòng
+                            </span>
+                        )}
                         {selectedKeys.size > 0 && (
                             <span className="text-xs text-gray-400">
                                 {Array.from(selectedKeys).join(', ')}

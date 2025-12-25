@@ -215,8 +215,8 @@ export function PromptFormatModule() {
                         <label className="text-sm font-medium text-gray-700">
                             Prompt đã chuẩn hóa
                             {extractedPrompts.length > 0 && (
-                                <span className="ml-2 text-xs text-gray-400">
-                                    ({extractedPrompts.length} prompts)
+                                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+                                    {extractedPrompts.length} prompts
                                 </span>
                             )}
                         </label>

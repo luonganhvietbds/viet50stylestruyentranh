@@ -253,7 +253,14 @@ export function ReplaceTextModule() {
                 {/* Output */}
                 <div>
                     <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700">Kết quả</label>
+                        <label className="text-sm font-medium text-gray-700">
+                            Kết quả
+                            {outputText && (
+                                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                                    {outputText.split('\n').filter(line => line.trim()).length} dòng
+                                </span>
+                            )}
+                        </label>
                         <div className="flex gap-2">
                             <button
                                 onClick={handleCopy}
