@@ -1,9 +1,9 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Mic, ArrowRight, RefreshCw } from 'lucide-react';
+import { Loader2, Mic, ArrowRight, RefreshCw, Trash2 } from 'lucide-react';
 import { AuthScreen } from '../story-factory/components/AuthScreen';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Segment, Sentence, countSyllables, createSegmentsFromSentences, createSegmentsFromOriginal } from '@/lib/voice-editor';
 import { SegmentEditor } from '@/components/voice-editor';
 
@@ -14,6 +14,17 @@ const TABS = [
     { id: 'step4', label: '④ EDITOR (GỐC)' },
 ];
 
+// Storage keys for Voice Editor
+const STORAGE_KEYS = {
+    activeTab: 'voice_editor_tab',
+    inputText: 'voice_editor_input',
+    sentences: 'voice_editor_sentences',
+    segments: 'voice_editor_segments',
+    segmentsTab4: 'voice_editor_segments_tab4',
+    minSyllables: 'voice_editor_min',
+    maxSyllables: 'voice_editor_max',
+};
+
 export default function VoiceEditorPage() {
     const { user, loading: authLoading } = useAuth();
     const [activeTab, setActiveTab] = useState('step1');
@@ -23,6 +34,48 @@ export default function VoiceEditorPage() {
     const [segmentsTab4, setSegmentsTab4] = useState<Segment[]>([]);
     const [minSyllables, setMinSyllables] = useState(15);
     const [maxSyllables, setMaxSyllables] = useState(22);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    // Load from localStorage on mount
+    useEffect(() => {
+        try {
+            const savedTab = localStorage.getItem(STORAGE_KEYS.activeTab);
+            if (savedTab) setActiveTab(savedTab);
+
+            const savedInput = localStorage.getItem(STORAGE_KEYS.inputText);
+            if (savedInput) setInputText(savedInput);
+
+            const savedSentences = localStorage.getItem(STORAGE_KEYS.sentences);
+            if (savedSentences) setSentences(JSON.parse(savedSentences));
+
+            const savedSegments = localStorage.getItem(STORAGE_KEYS.segments);
+            if (savedSegments) setSegments(JSON.parse(savedSegments));
+
+            const savedSegmentsTab4 = localStorage.getItem(STORAGE_KEYS.segmentsTab4);
+            if (savedSegmentsTab4) setSegmentsTab4(JSON.parse(savedSegmentsTab4));
+
+            const savedMin = localStorage.getItem(STORAGE_KEYS.minSyllables);
+            if (savedMin) setMinSyllables(Number(savedMin));
+
+            const savedMax = localStorage.getItem(STORAGE_KEYS.maxSyllables);
+            if (savedMax) setMaxSyllables(Number(savedMax));
+        } catch { /* ignore */ }
+        setIsLoaded(true);
+    }, []);
+
+    // Save to localStorage on change
+    useEffect(() => {
+        if (!isLoaded) return;
+        try {
+            localStorage.setItem(STORAGE_KEYS.activeTab, activeTab);
+            localStorage.setItem(STORAGE_KEYS.inputText, inputText);
+            localStorage.setItem(STORAGE_KEYS.sentences, JSON.stringify(sentences));
+            localStorage.setItem(STORAGE_KEYS.segments, JSON.stringify(segments));
+            localStorage.setItem(STORAGE_KEYS.segmentsTab4, JSON.stringify(segmentsTab4));
+            localStorage.setItem(STORAGE_KEYS.minSyllables, String(minSyllables));
+            localStorage.setItem(STORAGE_KEYS.maxSyllables, String(maxSyllables));
+        } catch { /* ignore */ }
+    }, [isLoaded, activeTab, inputText, sentences, segments, segmentsTab4, minSyllables, maxSyllables]);
 
     if (authLoading) {
         return (
@@ -68,12 +121,20 @@ export default function VoiceEditorPage() {
     };
 
     const handleNewSession = () => {
-        if (window.confirm('Bạn có chắc muốn xóa tất cả dữ liệu và bắt đầu phiên mới?')) {
+        if (window.confirm('⚠️ XÓA TẤT CẢ DỮ LIỆU?\n\nBạn có chắc muốn xóa tất cả dữ liệu phiên làm việc và bắt đầu lại từ đầu?')) {
+            // Clear state
             setInputText('');
             setSentences([]);
             setSegments([]);
             setSegmentsTab4([]);
             setActiveTab('step1');
+            setMinSyllables(15);
+            setMaxSyllables(22);
+
+            // Clear localStorage
+            Object.values(STORAGE_KEYS).forEach(key => {
+                try { localStorage.removeItem(key); } catch { /* ignore */ }
+            });
         }
     };
 
