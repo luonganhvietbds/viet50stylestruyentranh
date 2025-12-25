@@ -159,40 +159,61 @@ export async function bulkFixSegments(
 
     for (let i = 0; i < invalidSegments.length; i++) {
         const segment = invalidSegments[i];
+        let retryCount = 0;
+        const maxRetries = 3;
 
-        try {
-            const newText = await getVoiceSuggestion(
-                segment.text,
-                type,
-                targetMin,
-                targetMax,
-                getNextKey,
-                markKeyInvalid
-            );
+        while (retryCount <= maxRetries) {
+            try {
+                const newText = await getVoiceSuggestion(
+                    segment.text,
+                    type,
+                    targetMin,
+                    targetMax,
+                    getNextKey,
+                    markKeyInvalid
+                );
 
-            const newSyllables = countSyllables(newText);
-            const lang = detectLanguage(segment.text);
-            results.push({
-                ...segment,
-                text: newText,
-                syllable_count: newSyllables,
-                is_valid: newSyllables >= targetMin && newSyllables <= targetMax,
-                note: `AI ${type}: ${segment.syllable_count} → ${newSyllables} ${lang === 'vi' ? 'âm' : 'words'}`
-            });
+                const newSyllables = countSyllables(newText);
+                const lang = detectLanguage(segment.text);
+                results.push({
+                    ...segment,
+                    text: newText,
+                    syllable_count: newSyllables,
+                    is_valid: newSyllables >= targetMin && newSyllables <= targetMax,
+                    note: `AI ${type}: ${segment.syllable_count} → ${newSyllables} ${lang === 'vi' ? 'âm' : 'words'}`
+                });
 
-            onProgress?.(i + 1, invalidSegments.length);
+                onProgress?.(i + 1, invalidSegments.length);
+                break; // Success, exit retry loop
 
-            // Rate limiting delay
-            if (i < invalidSegments.length - 1) {
-                await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown';
+
+                // Check for rate limit errors (429)
+                if (errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('RESOURCE_EXHAUSTED')) {
+                    retryCount++;
+                    if (retryCount <= maxRetries) {
+                        // Exponential backoff: 5s, 10s, 20s
+                        const backoffMs = 5000 * Math.pow(2, retryCount - 1);
+                        console.log(`Rate limited, waiting ${backoffMs}ms before retry ${retryCount}/${maxRetries}...`);
+                        await new Promise(resolve => setTimeout(resolve, backoffMs));
+                        continue;
+                    }
+                }
+
+                // Keep original segment on error
+                results.push({
+                    ...segment,
+                    note: `Lỗi AI: ${errorMessage}`
+                });
+                onProgress?.(i + 1, invalidSegments.length);
+                break;
             }
-        } catch (error) {
-            // Keep original segment on error
-            results.push({
-                ...segment,
-                note: `Lỗi AI: ${error instanceof Error ? error.message : 'Unknown'}`
-            });
-            onProgress?.(i + 1, invalidSegments.length);
+        }
+
+        // Rate limiting delay between segments - increased to 2-3 seconds
+        if (i < invalidSegments.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 1000));
         }
     }
 
