@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Segment, SuggestionType } from '@/lib/voice-editor/types';
-import { countSyllables } from '@/lib/voice-editor/syllableCounter';
+import { Segment, SuggestionType, VoiceLanguage } from '@/lib/voice-editor/types';
+import { countSyllables, getUnitLabel } from '@/lib/voice-editor/syllableCounter';
 import {
     Sparkles,
     Plus,
@@ -31,6 +31,7 @@ interface SegmentItemProps {
     onGetAiSuggestion: (segment: Segment, type?: SuggestionType) => Promise<string>;
     minSyllables: number;
     maxSyllables: number;
+    language: VoiceLanguage;
 }
 
 export function SegmentItem({
@@ -46,7 +47,8 @@ export function SegmentItem({
     onManualMerge,
     onGetAiSuggestion,
     minSyllables,
-    maxSyllables
+    maxSyllables,
+    language
 }: SegmentItemProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(segment.text);
@@ -61,8 +63,9 @@ export function SegmentItem({
         setEditNote(segment.note);
     }, [segment.text, segment.note]);
 
-    const syllableCount = useMemo(() => countSyllables(editText), [editText]);
+    const syllableCount = useMemo(() => countSyllables(editText, language), [editText, language]);
     const isValid = syllableCount >= minSyllables && syllableCount <= maxSyllables;
+    const unitLabel = getUnitLabel(language);
 
     const getBorderColor = () => {
         if (isSelected) return 'border-blue-500 ring-2 ring-blue-300';
@@ -152,7 +155,7 @@ export function SegmentItem({
                 <div className="flex justify-between items-start">
                     <span className="font-mono text-sm font-semibold text-indigo-600">{segment.segment_id}</span>
                     <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${isValid ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                        {syllableCount} âm tiết
+                        {syllableCount} {unitLabel}
                     </span>
                 </div>
 
@@ -196,7 +199,7 @@ export function SegmentItem({
                         <div className="space-y-3">
                             {aiSuggestions.map((s, i) => {
                                 const title = suggestionTitles[i] || `Gợi ý ${i + 1}`;
-                                const suggestionSyllables = countSyllables(s);
+                                const suggestionSyllables = countSyllables(s, language);
                                 const suggestionValid = suggestionSyllables >= minSyllables && suggestionSyllables <= maxSyllables;
 
                                 return (
@@ -205,7 +208,7 @@ export function SegmentItem({
                                         <p className="text-sm text-gray-700 flex-grow mb-2">"{s}"</p>
                                         <div className="flex items-center justify-between">
                                             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${suggestionValid ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
-                                                {suggestionSyllables} âm tiết
+                                                {suggestionSyllables} {unitLabel}
                                             </span>
                                             <button onClick={() => applySuggestion(s)} className="text-xs font-bold text-indigo-600 hover:underline flex-shrink-0">
                                                 ÁP DỤNG

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mic, ArrowRight, RefreshCw, Trash2 } from 'lucide-react';
 import { AuthScreen } from '../story-factory/components/AuthScreen';
 import { useState, useCallback, useEffect } from 'react';
-import { Segment, Sentence, countSyllables, createSegmentsFromSentences, createSegmentsFromOriginal } from '@/lib/voice-editor';
+import { Segment, Sentence, countSyllables, createSegmentsFromSentences, createSegmentsFromOriginal, VoiceLanguage, VOICE_LANGUAGES, getUnitLabel } from '@/lib/voice-editor';
 import { SegmentEditor } from '@/components/voice-editor';
 
 const TABS = [
@@ -23,6 +23,7 @@ const STORAGE_KEYS = {
     segmentsTab4: 'voice_editor_segments_tab4',
     minSyllables: 'voice_editor_min',
     maxSyllables: 'voice_editor_max',
+    language: 'voice_editor_language',
 };
 
 export default function VoiceEditorPage() {
@@ -34,6 +35,7 @@ export default function VoiceEditorPage() {
     const [segmentsTab4, setSegmentsTab4] = useState<Segment[]>([]);
     const [minSyllables, setMinSyllables] = useState(15);
     const [maxSyllables, setMaxSyllables] = useState(22);
+    const [language, setLanguage] = useState<VoiceLanguage>('vi');
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Load from localStorage on mount
@@ -59,6 +61,9 @@ export default function VoiceEditorPage() {
 
             const savedMax = localStorage.getItem(STORAGE_KEYS.maxSyllables);
             if (savedMax) setMaxSyllables(Number(savedMax));
+
+            const savedLang = localStorage.getItem(STORAGE_KEYS.language);
+            if (savedLang && ['vi', 'en', 'ko', 'ja'].includes(savedLang)) setLanguage(savedLang as VoiceLanguage);
         } catch { /* ignore */ }
         setIsLoaded(true);
     }, []);
@@ -74,8 +79,9 @@ export default function VoiceEditorPage() {
             localStorage.setItem(STORAGE_KEYS.segmentsTab4, JSON.stringify(segmentsTab4));
             localStorage.setItem(STORAGE_KEYS.minSyllables, String(minSyllables));
             localStorage.setItem(STORAGE_KEYS.maxSyllables, String(maxSyllables));
+            localStorage.setItem(STORAGE_KEYS.language, language);
         } catch { /* ignore */ }
-    }, [isLoaded, activeTab, inputText, sentences, segments, segmentsTab4, minSyllables, maxSyllables]);
+    }, [isLoaded, activeTab, inputText, sentences, segments, segmentsTab4, minSyllables, maxSyllables, language]);
 
     if (authLoading) {
         return (
@@ -138,8 +144,9 @@ export default function VoiceEditorPage() {
         }
     };
 
-    const totalSyllables = sentences.reduce((acc, s) => acc + countSyllables(s.text), 0);
+    const totalSyllables = sentences.reduce((acc, s) => acc + countSyllables(s.text, language), 0);
     const totalWords = sentences.reduce((acc, s) => acc + s.text.split(/\s+/).filter(Boolean).length, 0);
+    const currentUnitLabel = getUnitLabel(language);
 
     return (
         <div className="min-h-[calc(100vh-4rem)] bg-gray-100">
@@ -153,6 +160,18 @@ export default function VoiceEditorPage() {
                             </div>
                             <h1 className="text-xl font-bold text-gray-800">VietVoice Pro Editor</h1>
                         </div>
+                        {/* Language Selector */}
+                        <select
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value as VoiceLanguage)}
+                            className="px-3 py-2 text-sm font-medium bg-white border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer"
+                        >
+                            {VOICE_LANGUAGES.map(lang => (
+                                <option key={lang.code} value={lang.code}>
+                                    {lang.flag} {lang.label}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="flex items-center gap-4 bg-green-50 p-3 rounded-lg border-2 border-green-200">
@@ -180,7 +199,7 @@ export default function VoiceEditorPage() {
                                 className="w-16 px-2 py-1.5 text-center text-sm font-bold text-green-700 bg-white border-2 border-green-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                             />
                         </div>
-                        <span className="text-xs text-gray-500">âm tiết/words</span>
+                        <span className="text-xs text-gray-500">{currentUnitLabel}</span>
                     </div>
 
                     <button
@@ -289,6 +308,7 @@ export default function VoiceEditorPage() {
                         onSegmentsChange={setSegments}
                         minSyllables={minSyllables}
                         maxSyllables={maxSyllables}
+                        language={language}
                     />
                 )}
 
@@ -298,6 +318,7 @@ export default function VoiceEditorPage() {
                         onSegmentsChange={setSegmentsTab4}
                         minSyllables={minSyllables}
                         maxSyllables={maxSyllables}
+                        language={language}
                     />
                 )}
             </main>

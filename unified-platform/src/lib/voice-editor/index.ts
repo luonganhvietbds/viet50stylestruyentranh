@@ -1,8 +1,9 @@
 // Voice Editor Utils Export
 
-export { countSyllables } from './syllableCounter';
+export { countSyllables, getUnitLabel } from './syllableCounter';
 export { createSegmentsFromSentences, createSegmentsFromOriginal } from './segmentation';
-export type { Segment, Sentence, SuggestionType } from './types';
+export type { Segment, Sentence, SuggestionType, VoiceLanguage } from './types';
+export { VOICE_LANGUAGES } from './types';
 
 // AI Service
 export { getVoiceSuggestion, mergeSegmentsWithAI, bulkFixSegments } from './aiService';

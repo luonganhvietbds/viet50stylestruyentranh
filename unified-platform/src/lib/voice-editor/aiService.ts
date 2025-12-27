@@ -1,60 +1,107 @@
-// Voice Editor AI Service Functions - Multi-language Support
+// Voice Editor AI Service Functions - Multi-language Support (VI/EN/KO/JA)
 
 import { generateWithModelFallback } from '@/lib/gemini';
-import { Segment, SuggestionType } from './types';
-import { countSyllables } from './syllableCounter';
+import { Segment, SuggestionType, VoiceLanguage } from './types';
+import { countSyllables, getUnitLabel } from './syllableCounter';
 
-/**
- * Detect if text is primarily English or Vietnamese
- */
-function detectLanguage(text: string): 'en' | 'vi' {
-    // Check for Vietnamese-specific characters
-    const vietnameseChars = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
-    const hasVietnamese = vietnameseChars.test(text);
-
-    if (hasVietnamese) {
-        return 'vi';
-    }
-
-    // Check ratio of ASCII vs non-ASCII characters
-    const asciiLetters = text.match(/[a-zA-Z]/g) || [];
-    const nonAsciiChars = text.match(/[^\x00-\x7F]/g) || [];
-
-    if (asciiLetters.length > 0 && nonAsciiChars.length === 0) {
-        return 'en';
-    }
-
-    return 'vi'; // Default to Vietnamese
-}
-
-// Bilingual suggestion prompts
-const SUGGESTION_PROMPTS_VI: Record<SuggestionType, string> = {
-    padding: `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy thêm từ đệm vào câu dưới đây để đạt độ dài mục tiêu, GIỮ NGUYÊN Ý NGHĨA và nội dung chính.
+// Suggestion prompts for all supported languages
+const SUGGESTION_PROMPTS: Record<VoiceLanguage, Record<SuggestionType, string>> = {
+    vi: {
+        padding: `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy thêm từ đệm vào câu dưới đây để đạt độ dài mục tiêu, GIỮ NGUYÊN Ý NGHĨA và nội dung chính.
 CHỈ THÊM các từ nối như: "và", "thì", "mà", "để", "nên", "cũng", "đã", "đang", "rồi", "lại"...
 KHÔNG thay đổi từ ngữ chính.`,
-
-    contextual: `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy thay thế từ đồng nghĩa hoặc thêm từ ngữ phù hợp ngữ cảnh để câu đạt độ dài mục tiêu.
+        contextual: `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy thay thế từ đồng nghĩa hoặc thêm từ ngữ phù hợp ngữ cảnh để câu đạt độ dài mục tiêu.
 Có thể thay đổi nhẹ cấu trúc câu nhưng GIỮ NGUYÊN Ý NGHĨA.`,
-
-    optimization: `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy viết lại câu dưới đây sao cho hay hơn, mượt hơn, và đạt độ dài mục tiêu.
+        optimization: `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy viết lại câu dưới đây sao cho hay hơn, mượt hơn, và đạt độ dài mục tiêu.
 Bạn có thể tự do sáng tạo nhưng phải GIỮ NGUYÊN Ý CHÍNH của câu.`
-};
-
-const SUGGESTION_PROMPTS_EN: Record<SuggestionType, string> = {
-    padding: `You are an expert English language editor. Add filler words or phrases to the sentence below to reach the target word count while PRESERVING the original meaning.
+    },
+    en: {
+        padding: `You are an expert English language editor. Add filler words or phrases to the sentence below to reach the target word count while PRESERVING the original meaning.
 ONLY ADD connectors like: "and", "also", "then", "so", "but", "yet", "however", "moreover", "in fact"...
 DO NOT change the core words.`,
-
-    contextual: `You are an expert English language editor. Replace words with synonyms or add contextually appropriate phrases to reach the target word count.
+        contextual: `You are an expert English language editor. Replace words with synonyms or add contextually appropriate phrases to reach the target word count.
 You may slightly restructure the sentence but PRESERVE the original meaning.`,
-
-    optimization: `You are an expert English language editor. Rewrite the sentence below to make it more eloquent, smooth, and reach the target word count.
+        optimization: `You are an expert English language editor. Rewrite the sentence below to make it more eloquent, smooth, and reach the target word count.
 You have creative freedom but must PRESERVE the core meaning.`
+    },
+    ko: {
+        padding: `당신은 한국어 전문 편집자입니다. 아래 문장에 접속사나 조사를 추가하여 목표 음절 수에 맞추세요. 원래 의미를 유지해야 합니다.
+"그리고", "그래서", "하지만", "또한", "게다가", "그런데" 등의 연결어만 추가하세요.
+핵심 단어는 변경하지 마세요.`,
+        contextual: `당신은 한국어 전문 편집자입니다. 동의어로 대체하거나 문맥에 맞는 표현을 추가하여 목표 음절 수에 맞추세요.
+문장 구조를 약간 변경할 수 있지만 원래 의미를 유지하세요.`,
+        optimization: `당신은 한국어 전문 편집자입니다. 아래 문장을 더 자연스럽고 부드럽게 다시 작성하고 목표 음절 수에 맞추세요.
+창의적으로 작성할 수 있지만 핵심 의미는 유지해야 합니다.`
+    },
+    ja: {
+        padding: `あなたは日本語の専門編集者です。以下の文に助詞や接続詞を追加して、目標のモーラ数に調整してください。元の意味を保持してください。
+「そして」「また」「しかし」「さらに」「それから」などの接続語のみを追加してください。
+核心的な言葉は変更しないでください。`,
+        contextual: `あなたは日本語の専門編集者です。同義語に置き換えたり、文脈に合った表現を追加して目標のモーラ数に調整してください。
+文の構造を少し変更してもよいですが、元の意味を保持してください。`,
+        optimization: `あなたは日本語の専門編集者です。以下の文をより自然でスムーズに書き直し、目標のモーラ数に合わせてください。
+創造的に書き直せますが、核心的な意味は保持してください。`
+    }
+};
+
+// Merge prompts for all languages
+const MERGE_PROMPTS: Record<VoiceLanguage, (text1: string, text2: string, min: number, max: number, unit: string) => string> = {
+    vi: (text1, text2, min, max, unit) => `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy gộp 2 câu dưới đây thành 1 câu mạch lạc, tự nhiên.
+
+CÂU 1: "${text1}"
+CÂU 2: "${text2}"
+
+YÊU CẦU:
+- Gộp thành 1 câu duy nhất
+- Độ dài mục tiêu: ${min}-${max} ${unit}
+- Giữ nguyên ý chính của cả 2 câu
+- Câu mới phải mượt mà, tự nhiên
+
+CHỈ TRẢ VỀ CÂU MỚI, KHÔNG giải thích.`,
+
+    en: (text1, text2, min, max, unit) => `You are an expert English language editor. Merge the two sentences below into one coherent, natural sentence.
+
+SENTENCE 1: "${text1}"
+SENTENCE 2: "${text2}"
+
+REQUIREMENTS:
+- Merge into a single sentence
+- Target length: ${min}-${max} ${unit}
+- Preserve the main meaning of both sentences
+- The new sentence must be smooth and natural
+
+ONLY return the new sentence, NO explanations.`,
+
+    ko: (text1, text2, min, max, unit) => `당신은 한국어 전문 편집자입니다. 아래 두 문장을 하나의 자연스러운 문장으로 합쳐주세요.
+
+문장 1: "${text1}"
+문장 2: "${text2}"
+
+요구사항:
+- 하나의 문장으로 합치기
+- 목표 길이: ${min}-${max} ${unit}
+- 두 문장의 핵심 의미 유지
+- 새 문장은 자연스럽고 부드러워야 함
+
+새 문장만 반환하세요. 설명 없이.`,
+
+    ja: (text1, text2, min, max, unit) => `あなたは日本語の専門編集者です。以下の2つの文を1つの自然な文に統合してください。
+
+文1: "${text1}"
+文2: "${text2}"
+
+要件:
+- 1つの文に統合する
+- 目標の長さ: ${min}-${max} ${unit}
+- 両方の文の核心的な意味を保持
+- 新しい文は滑らかで自然でなければならない
+
+新しい文のみを返してください。説明は不要です。`
 };
 
 /**
  * Get AI suggestion to fix a segment to target syllable/word count
- * Automatically detects language and responds in the same language
+ * Uses the specified language for prompts and response
  */
 export async function getVoiceSuggestion(
     text: string,
@@ -62,22 +109,30 @@ export async function getVoiceSuggestion(
     targetMin: number,
     targetMax: number,
     getNextKey: () => string | null,
-    markKeyInvalid: ((key: string) => void) | null
+    markKeyInvalid: ((key: string) => void) | null,
+    language: VoiceLanguage = 'vi'
 ): Promise<string> {
-    const lang = detectLanguage(text);
-    const currentCount = countSyllables(text);
+    const currentCount = countSyllables(text, language);
     const targetRange = `${targetMin}-${targetMax}`;
+    const unit = getUnitLabel(language);
+    const prompts = SUGGESTION_PROMPTS[language];
 
-    const prompts = lang === 'vi' ? SUGGESTION_PROMPTS_VI : SUGGESTION_PROMPTS_EN;
-    const countUnit = lang === 'vi' ? 'âm tiết' : 'words';
+    // Language-specific instruction labels
+    const labels = {
+        vi: { original: 'CÂU GỐC', requirement: 'YÊU CẦU', rewrite: 'Viết lại câu để đạt', onlyReturn: 'CHỈ TRẢ VỀ CÂU MỚI, KHÔNG giải thích gì thêm.' },
+        en: { original: 'ORIGINAL SENTENCE', requirement: 'REQUIREMENT', rewrite: 'Rewrite to reach', onlyReturn: 'ONLY return the new sentence, NO explanations.' },
+        ko: { original: '원문', requirement: '요구사항', rewrite: '다음 범위로 다시 작성하세요', onlyReturn: '새 문장만 반환하세요. 설명 없이.' },
+        ja: { original: '原文', requirement: '要件', rewrite: '次の範囲で書き直してください', onlyReturn: '新しい文のみを返してください。説明は不要です。' }
+    };
 
+    const l = labels[language];
     const prompt = `${prompts[type]}
 
-${lang === 'vi' ? 'CÂU GỐC' : 'ORIGINAL SENTENCE'} (${currentCount} ${countUnit}): "${text}"
+${l.original} (${currentCount} ${unit}): "${text}"
 
-${lang === 'vi' ? 'YÊU CẦU' : 'REQUIREMENT'}: ${lang === 'vi' ? 'Viết lại câu để đạt' : 'Rewrite to reach'} ${targetRange} ${countUnit}.
+${l.requirement}: ${l.rewrite} ${targetRange} ${unit}.
 
-${lang === 'vi' ? 'CHỈ TRẢ VỀ CÂU MỚI, KHÔNG giải thích gì thêm.' : 'ONLY return the new sentence, NO explanations.'}`;
+${l.onlyReturn}`;
 
     const result = await generateWithModelFallback(
         getNextKey,
@@ -92,7 +147,7 @@ ${lang === 'vi' ? 'CHỈ TRẢ VỀ CÂU MỚI, KHÔNG giải thích gì thêm.'
 }
 
 /**
- * Merge two segments using AI - with language detection
+ * Merge two segments using AI - with language support
  */
 export async function mergeSegmentsWithAI(
     text1: string,
@@ -100,36 +155,11 @@ export async function mergeSegmentsWithAI(
     targetMin: number,
     targetMax: number,
     getNextKey: () => string | null,
-    markKeyInvalid: ((key: string) => void) | null
+    markKeyInvalid: ((key: string) => void) | null,
+    language: VoiceLanguage = 'vi'
 ): Promise<string> {
-    const lang = detectLanguage(text1 + ' ' + text2);
-    const countUnit = lang === 'vi' ? 'âm tiết' : 'words';
-
-    const prompt = lang === 'vi'
-        ? `Bạn là chuyên gia xử lý ngôn ngữ tiếng Việt. Hãy gộp 2 câu dưới đây thành 1 câu mạch lạc, tự nhiên.
-
-CÂU 1: "${text1}"
-CÂU 2: "${text2}"
-
-YÊU CẦU:
-- Gộp thành 1 câu duy nhất
-- Độ dài mục tiêu: ${targetMin}-${targetMax} ${countUnit}
-- Giữ nguyên ý chính của cả 2 câu
-- Câu mới phải mượt mà, tự nhiên
-
-CHỈ TRẢ VỀ CÂU MỚI, KHÔNG giải thích.`
-        : `You are an expert English language editor. Merge the two sentences below into one coherent, natural sentence.
-
-SENTENCE 1: "${text1}"
-SENTENCE 2: "${text2}"
-
-REQUIREMENTS:
-- Merge into a single sentence
-- Target length: ${targetMin}-${targetMax} ${countUnit}
-- Preserve the main meaning of both sentences
-- The new sentence must be smooth and natural
-
-ONLY return the new sentence, NO explanations.`;
+    const unit = getUnitLabel(language);
+    const prompt = MERGE_PROMPTS[language](text1, text2, targetMin, targetMax, unit);
 
     const result = await generateWithModelFallback(
         getNextKey,
@@ -152,10 +182,12 @@ export async function bulkFixSegments(
     targetMax: number,
     getNextKey: () => string | null,
     markKeyInvalid: ((key: string) => void) | null,
-    onProgress?: (current: number, total: number) => void
+    onProgress?: (current: number, total: number) => void,
+    language: VoiceLanguage = 'vi'
 ): Promise<Segment[]> {
     const results: Segment[] = [];
     const invalidSegments = segments.filter(s => !s.is_valid);
+    const unit = getUnitLabel(language);
 
     for (let i = 0; i < invalidSegments.length; i++) {
         const segment = invalidSegments[i];
@@ -170,17 +202,17 @@ export async function bulkFixSegments(
                     targetMin,
                     targetMax,
                     getNextKey,
-                    markKeyInvalid
+                    markKeyInvalid,
+                    language
                 );
 
-                const newSyllables = countSyllables(newText);
-                const lang = detectLanguage(segment.text);
+                const newSyllables = countSyllables(newText, language);
                 results.push({
                     ...segment,
                     text: newText,
                     syllable_count: newSyllables,
                     is_valid: newSyllables >= targetMin && newSyllables <= targetMax,
-                    note: `AI ${type}: ${segment.syllable_count} → ${newSyllables} ${lang === 'vi' ? 'âm' : 'words'}`
+                    note: `AI ${type}: ${segment.syllable_count} → ${newSyllables} ${unit}`
                 });
 
                 onProgress?.(i + 1, invalidSegments.length);

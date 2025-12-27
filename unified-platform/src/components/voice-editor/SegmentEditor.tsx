@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Segment, SuggestionType } from '@/lib/voice-editor/types';
+import { Segment, SuggestionType, VoiceLanguage } from '@/lib/voice-editor/types';
 import { countSyllables } from '@/lib/voice-editor/syllableCounter';
 import {
     getVoiceSuggestion,
@@ -69,13 +69,15 @@ interface SegmentEditorProps {
     onSegmentsChange: (segments: Segment[]) => void;
     minSyllables: number;
     maxSyllables: number;
+    language: VoiceLanguage;
 }
 
 export function SegmentEditor({
     initialSegments,
     onSegmentsChange,
     minSyllables,
-    maxSyllables
+    maxSyllables,
+    language
 }: SegmentEditorProps) {
     const { getNextKey, hasValidKey, markKeyInvalid } = useApiKey();
     const { state: segments, setState: setSegmentsHistory, undo, redo, canUndo, canRedo } = useHistory<Segment[]>(initialSegments);
@@ -96,7 +98,7 @@ export function SegmentEditor({
         }
 
         const finalSegments = processedSegments.map(s => {
-            const newSyllableCount = countSyllables(s.text);
+            const newSyllableCount = countSyllables(s.text, language);
             return {
                 ...s,
                 syllable_count: newSyllableCount,
@@ -105,12 +107,12 @@ export function SegmentEditor({
         });
 
         setSegmentsHistory(finalSegments);
-    }, [setSegmentsHistory, minSyllables, maxSyllables]);
+    }, [setSegmentsHistory, minSyllables, maxSyllables, language]);
 
     // Re-validate when min/max changes
     useEffect(() => {
         const revalidatedSegments = segments.map(s => {
-            const count = countSyllables(s.text);
+            const count = countSyllables(s.text, language);
             return {
                 ...s,
                 is_valid: count >= minSyllables && count <= maxSyllables
@@ -121,7 +123,7 @@ export function SegmentEditor({
         if (hasChanges) {
             setSegmentsHistory(revalidatedSegments);
         }
-    }, [minSyllables, maxSyllables]);
+    }, [minSyllables, maxSyllables, language]);
 
     // Sync with parent
     useEffect(() => {
@@ -192,7 +194,8 @@ export function SegmentEditor({
                 minSyllables,
                 maxSyllables,
                 getNextKey,
-                markKeyInvalid
+                markKeyInvalid,
+                language
             );
 
             const newSegments = segments
@@ -253,7 +256,8 @@ export function SegmentEditor({
                 minSyllables,
                 maxSyllables,
                 getNextKey,
-                markKeyInvalid
+                markKeyInvalid,
+                language
             );
         } catch (error) {
             return `Lỗi: ${error instanceof Error ? error.message : 'Unknown'}`;
@@ -302,7 +306,8 @@ export function SegmentEditor({
                 maxSyllables,
                 getNextKey,
                 markKeyInvalid,
-                (current, total) => setBulkProgress({ current, total })
+                (current, total) => setBulkProgress({ current, total }),
+                language
             );
 
             // Merge fixed segments back
@@ -470,6 +475,7 @@ export function SegmentEditor({
                             onGetAiSuggestion={handleGetAiSuggestion}
                             minSyllables={minSyllables}
                             maxSyllables={maxSyllables}
+                            language={language}
                         />
                     ))}
                 </div>
