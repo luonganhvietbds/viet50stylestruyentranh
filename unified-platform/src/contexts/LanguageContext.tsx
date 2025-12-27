@@ -23,6 +23,12 @@ interface LanguageContextType {
 
     // Check if current language is English
     isEnglish: boolean;
+
+    // Check if current language is Korean
+    isKorean: boolean;
+
+    // Check if current language is Japanese
+    isJapanese: boolean;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -39,7 +45,7 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
     useEffect(() => {
         try {
             const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
-            if (stored === 'en' || stored === 'vi') {
+            if (stored === 'en' || stored === 'vi' || stored === 'ko' || stored === 'ja') {
                 setLanguageState(stored);
             }
         } catch (error) {
@@ -73,6 +79,8 @@ export function LanguageProvider({ children }: LanguageProviderProps) {
         getLanguageConfig,
         isVietnamese: language === 'vi',
         isEnglish: language === 'en',
+        isKorean: language === 'ko',
+        isJapanese: language === 'ja',
     };
 
     // Prevent hydration mismatch by not rendering until initialized

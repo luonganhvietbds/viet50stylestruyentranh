@@ -32,8 +32,8 @@ export function LanguageToggle({
                         key={lang.code}
                         onClick={() => setLanguage(lang.code)}
                         className={`px-3 py-1.5 text-sm font-medium transition-all ${language === lang.code
-                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
-                                : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
+                            : 'bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700'
                             }`}
                         title={`${lang.nativeLabel} (${lang.label})`}
                     >
@@ -51,7 +51,10 @@ export function LanguageToggleMinimal() {
     const { language, setLanguage } = useLanguage();
 
     const toggleLanguage = () => {
-        setLanguage(language === 'vi' ? 'en' : 'vi');
+        const codes = SUPPORTED_LANGUAGES.map(l => l.code);
+        const currentIndex = codes.indexOf(language);
+        const nextIndex = (currentIndex + 1) % codes.length;
+        setLanguage(codes[nextIndex]);
     };
 
     const currentLang = SUPPORTED_LANGUAGES.find(l => l.code === language);
