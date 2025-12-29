@@ -3,7 +3,7 @@
 export { countSyllables, getUnitLabel } from './syllableCounter';
 export { createSegmentsFromSentences, createSegmentsFromOriginal } from './segmentation';
 export type { Segment, Sentence, SuggestionType, VoiceLanguage } from './types';
-export { VOICE_LANGUAGES } from './types';
+export { VOICE_LANGUAGES, JA_CINEMATIC_DEFAULTS, LANGUAGE_DEFAULTS } from './types';
 
 // AI Service
 export { getVoiceSuggestion, mergeSegmentsWithAI, bulkFixSegments } from './aiService';

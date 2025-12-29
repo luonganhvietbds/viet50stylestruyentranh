@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Segment, SuggestionType, VoiceLanguage } from '@/lib/voice-editor/types';
+import { Segment, SuggestionType, VoiceLanguage, JA_CINEMATIC_DEFAULTS } from '@/lib/voice-editor/types';
 import { countSyllables, getUnitLabel } from '@/lib/voice-editor/syllableCounter';
 import {
     Sparkles,
@@ -67,10 +67,38 @@ export function SegmentItem({
     const isValid = syllableCount >= minSyllables && syllableCount <= maxSyllables;
     const unitLabel = getUnitLabel(language);
 
+    // Japanese-specific validation states per SPEC
+    // 26-29: ⚠️ Warning low (acceptable for pause/static scenes)
+    // 30-34: ✅ Optimal
+    // 35-37: ⚠️ Warning high (slightly fast)
+    const getJapaneseValidationState = (): 'valid' | 'warning' | 'invalid' => {
+        if (language !== 'ja') return isValid ? 'valid' : 'invalid';
+
+        if (syllableCount >= JA_CINEMATIC_DEFAULTS.min && syllableCount <= JA_CINEMATIC_DEFAULTS.max) {
+            return 'valid'; // 30-34: Perfect
+        }
+        if (syllableCount >= JA_CINEMATIC_DEFAULTS.warningLow && syllableCount < JA_CINEMATIC_DEFAULTS.min) {
+            return 'warning'; // 26-29: Acceptable
+        }
+        if (syllableCount > JA_CINEMATIC_DEFAULTS.max && syllableCount <= JA_CINEMATIC_DEFAULTS.warningHigh) {
+            return 'warning'; // 35-37: Acceptable
+        }
+        return 'invalid'; // <26 or >37
+    };
+
+    const validationState = language === 'ja' ? getJapaneseValidationState() : (isValid ? 'valid' : 'invalid');
+
     const getBorderColor = () => {
         if (isSelected) return 'border-blue-500 ring-2 ring-blue-300';
-        if (!isValid) return 'border-red-400';
+        if (validationState === 'invalid') return 'border-red-400';
+        if (validationState === 'warning') return 'border-yellow-400';
         return 'border-emerald-400';
+    };
+
+    const getBadgeColor = () => {
+        if (validationState === 'invalid') return 'bg-red-100 text-red-800';
+        if (validationState === 'warning') return 'bg-yellow-100 text-yellow-800';
+        return 'bg-emerald-100 text-emerald-800';
     };
 
     const handleSave = () => {
@@ -154,7 +182,7 @@ export function SegmentItem({
             <div className="flex-grow">
                 <div className="flex justify-between items-start">
                     <span className="font-mono text-sm font-semibold text-indigo-600">{segment.segment_id}</span>
-                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${isValid ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${getBadgeColor()}`}>
                         {syllableCount} {unitLabel}
                     </span>
                 </div>
@@ -200,14 +228,29 @@ export function SegmentItem({
                             {aiSuggestions.map((s, i) => {
                                 const title = suggestionTitles[i] || `Gợi ý ${i + 1}`;
                                 const suggestionSyllables = countSyllables(s, language);
-                                const suggestionValid = suggestionSyllables >= minSyllables && suggestionSyllables <= maxSyllables;
+
+                                // Get suggestion validation state (same logic as segment)
+                                const getSuggestionState = () => {
+                                    const isOk = suggestionSyllables >= minSyllables && suggestionSyllables <= maxSyllables;
+                                    if (language !== 'ja') return isOk ? 'valid' : 'invalid';
+
+                                    if (suggestionSyllables >= JA_CINEMATIC_DEFAULTS.min && suggestionSyllables <= JA_CINEMATIC_DEFAULTS.max) return 'valid';
+                                    if (suggestionSyllables >= JA_CINEMATIC_DEFAULTS.warningLow && suggestionSyllables < JA_CINEMATIC_DEFAULTS.min) return 'warning';
+                                    if (suggestionSyllables > JA_CINEMATIC_DEFAULTS.max && suggestionSyllables <= JA_CINEMATIC_DEFAULTS.warningHigh) return 'warning';
+                                    return 'invalid';
+                                };
+
+                                const suggestionState = getSuggestionState();
+                                const suggestionBadgeColor = suggestionState === 'invalid' ? 'bg-red-100 text-red-800'
+                                    : suggestionState === 'warning' ? 'bg-yellow-100 text-yellow-800'
+                                        : 'bg-emerald-100 text-emerald-800';
 
                                 return (
                                     <div key={i} className="bg-white p-3 rounded-md border border-gray-200 shadow-sm">
                                         <p className="text-xs font-semibold text-indigo-600 mb-1">{title}</p>
                                         <p className="text-sm text-gray-700 flex-grow mb-2">"{s}"</p>
                                         <div className="flex items-center justify-between">
-                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${suggestionValid ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${suggestionBadgeColor}`}>
                                                 {suggestionSyllables} {unitLabel}
                                             </span>
                                             <button onClick={() => applySuggestion(s)} className="text-xs font-bold text-indigo-600 hover:underline flex-shrink-0">

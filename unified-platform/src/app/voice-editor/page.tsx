@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Mic, ArrowRight, RefreshCw, Trash2 } from 'lucide-react';
 import { AuthScreen } from '../story-factory/components/AuthScreen';
 import { useState, useCallback, useEffect } from 'react';
-import { Segment, Sentence, countSyllables, createSegmentsFromSentences, createSegmentsFromOriginal, VoiceLanguage, VOICE_LANGUAGES, getUnitLabel } from '@/lib/voice-editor';
+import { Segment, Sentence, countSyllables, createSegmentsFromSentences, createSegmentsFromOriginal, VoiceLanguage, VOICE_LANGUAGES, getUnitLabel, LANGUAGE_DEFAULTS } from '@/lib/voice-editor';
 import { SegmentEditor } from '@/components/voice-editor';
 
 const TABS = [
@@ -83,6 +83,16 @@ export default function VoiceEditorPage() {
         } catch { /* ignore */ }
     }, [isLoaded, activeTab, inputText, sentences, segments, segmentsTab4, minSyllables, maxSyllables, language]);
 
+    // Update min/max defaults when language changes
+    useEffect(() => {
+        if (!isLoaded) return;
+        const defaults = LANGUAGE_DEFAULTS[language];
+        if (defaults) {
+            setMinSyllables(defaults.min);
+            setMaxSyllables(defaults.max);
+        }
+    }, [language, isLoaded]);
+
     if (authLoading) {
         return (
             <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center gap-4">
@@ -110,7 +120,8 @@ export default function VoiceEditorPage() {
         const generatedSegments = createSegmentsFromSentences(
             sentences.map(s => s.text),
             minSyllables,
-            maxSyllables
+            maxSyllables,
+            language
         );
         setSegments(generatedSegments);
         setActiveTab('step3');
@@ -120,7 +131,8 @@ export default function VoiceEditorPage() {
         const mappedSegments = createSegmentsFromOriginal(
             sentences.map(s => s.text),
             minSyllables,
-            maxSyllables
+            maxSyllables,
+            language
         );
         setSegmentsTab4(mappedSegments);
         setActiveTab('step4');
